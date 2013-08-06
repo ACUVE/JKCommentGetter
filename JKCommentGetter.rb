@@ -1,5 +1,5 @@
 # encoding: UTF-8
-# JKCommentGetter Ver.1.4
+# JKCommentGetter Ver.1.5
 
 # License: GPLv3 or later
 #    This program is free software: you can redistribute it and/or modify
@@ -58,6 +58,8 @@
 # 　　　-r num, --retry num
 # 　　　　エラーが発生した際に再取得しに行く最大回数。サーバーに負荷をかけない程度にしましょう。
 # 　　　　オプション自体を省略した場合、 3 となり、始めの1回目+再取得3回で最大4回取得に行きます。
+# 　　　-i cookie, --cookie
+# 　　　　Cookieとして利用する文字列を与えます。
 # 　　　-h, --help
 # 　　　　ヘルプを出力します。
 #
@@ -90,12 +92,16 @@
 # 　○Ver.1.4 / 2013/07/24
 # 　　・スクリプトに名前をつけた
 # 　　・同じような時間帯のコメントをダウンロードしないようにするオプションを追加
+# 　○Ver.1.5 / 2013/08/06
+# 　　・Cookieを引数から与えられるようにした
 
 require 'net/http'
 require 'rexml/document'
 require 'getoptlong'
 
 def getCookie
+	# 引数でCookieが与えられなかった場合に呼ばれます。スクリプトの引数として与える場合は設定は不要です
+	
 	# 設定がよくわからなかったらニコニコ動画にログインして http://jk.nicovideo.jp/ を開いて、
 	#       javascript:window.prompt("Cookie","'"+document.cookie+"'")
 	# をアドレス欄に入力してEnter押して、表示されたプロンプトの中身をコピーしてすぐ下の行に貼り付けて、改行があるならば消して一行にまとめれば動くと思います。
@@ -316,15 +322,12 @@ def showhelp(io = $stdout)
 	io.puts '  -c  --check-file                    取得時間範囲がよく似たファイルが存在する場合ダウンロードしなくなります'
 	io.puts '  -a sec  --check-range sec           よく似たファイルと判定する時間範囲を設定します'
 	io.puts '  -r num  --retry num                 取得エラーが発生した際に再取得へ行く回数'
+	io.puts '  -i cookie  --cookie cookie          Cookieとして利用する文字列を与えます'
 	io.puts '  -h  --help                          このヘルプを表示し終了します'
 	io.puts
 	io.puts '    詳細はソースコードをご覧ください'
 end
 
-# クッキーが設定されているかテスト
-cookie = getCookie
-errorexit('Cookieが設定されていません 設定を行なってください') if cookie == nil || cookie == ''
-cookie.strip!
 
 # オプションのパース
 opt = GetoptLong.new
@@ -338,6 +341,7 @@ opt.set_options(
 	['-c',	'--check-file',		GetoptLong::NO_ARGUMENT],
 	['-a',	'--check-range',	GetoptLong::REQUIRED_ARGUMENT],
 	['-r',	'--retry',			GetoptLong::REQUIRED_ARGUMENT],
+	['-i',	'--cookie',			GetoptLong::REQUIRED_ARGUMENT],
 	['-h',	'--help',			GetoptLong::NO_ARGUMENT]
 )
 
@@ -350,6 +354,11 @@ errorexit('--start-marginオプションがおかしいです') if OPT[:s] && !p
 errorexit('--end-marginオプションがおかしいです') if OPT[:e] && !pmnumonly?(OPT[:e])
 errorexit('--retryオプションがおかしいです') if OPT[:r] && !numonly?(OPT[:r])
 errorexit('--check-rangeオプションがおかしいです') if OPT[:a] && !numonly?(OPT[:a])
+
+# クッキーが設定されているかテスト
+cookie = OPT[:i] || getCookie
+errorexit('Cookieが設定されていません 設定を行なってください') if cookie == nil || cookie.strip == ''
+cookie = cookie.strip
 
 jknum = ARGV[0]
 start_time = getTimeFromARGV(ARGV[1])
