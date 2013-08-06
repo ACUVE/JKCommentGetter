@@ -1,24 +1,32 @@
 # encoding: UTF-8
 # License: GPLv3
+# Ver.1.1
 
 # ※予め設定が必要です
 # 　Cookieの取得方法が人それぞれのため、getCookieメソッドを自前で実装する必要性があります。
 #
 # ■これはなに？
 # 　ニコニコ実況のコメントをダウンロードするスクリプトです。
-# 　現在のところ標準出力に結果を出力するので、ソースを変更するかリダイレクトしてファイルに保存すれば良いかと思います
-# 　ログは標準エラー出力
 #
 # ■コマンド
 # 　ruby *******.rb チャンネル 取得時間範囲のはじめ 取得時間範囲のおわり [ext.]
 # 　　チャンネル："jk1"など
 # 　　取得時間範囲のはじめ：Unix時または、YYYYMMDDhhmmss形式でも受け付けます。具体的には14桁でない時はUnix時として扱います
 # 　　取得時間範囲のおわり：上に同じ
-# 　　ext.：未実装、省略可、いつかなにか付けるかも
+# 　　ext.： 第4引数を -f にするとファイルに出力します。ファイル名は「(一番始めのコメントのUnix時).txt」です。
 #
 # 　・例
-# 　　ruby ******.rb jk1 20130101000000 20130101010000 > out.txt
-# 　　　2013年01月01日午前0時0分0秒から2013年01月01日午前1時0分0秒までのjk1のコメントをダウンロードしてout.txtに出力
+# 　　ruby *******.rb jk1 20130101000000 20130101010000 > out.txt
+# 　　　2013年01月01日午前00時00分00秒から2013年01月01日午前01時00分00秒までのjk1のコメントをダウンロードして out.txt に出力
+# 　　ruby *******.rb jk9 20130714222630 20130714223000 -f
+# 　　　2013年07月14日午後10時26分30秒から2013年07月14日午後10時30分00秒までのjk9のコメントをダウンロードして 1373808390.txt（一番始めのコメントのUnix時）に出力
+# 　　　てーきゅー（TOKYO MX）の時間帯のはずです
+
+# ■更新履歴
+# 　○Ver.1.1 / 2013/07/18
+# 　　・Windowsでちゃんと動くように修正
+# 　　・-f オプションを追加してファイル名の変更の手間を省けるようにした
+# 　　・その他マイナーなバグの修正
 
 
 require 'net/http'
@@ -29,11 +37,13 @@ def getCookie
 	#       javascript:window.prompt("Cookie","'"+document.cookie+"'")
 	# をアドレス欄に入力してEnter押して、表示されたプロンプトの中身をコピーしてすぐ下の行に貼り付けて、改行があるならば消して一行にまとめれば動くと思います。
 	
-	# 以下は、NicoJK.iniからコピペしただけだから動くかわからん。
+	# 以下のコードはGoogleChrome用のみVer28にて動作確認済み。
+	# ファイルパス中の \ は \\ とする必要性があります。
 	# GoogleChrome用
-	# `sqlite3.exe "{ここをプロファイルフォルダの場所に修正}\Cookies" -separator = "select name,value from cookies where (host_key='.nicovideo.jp' or host_key='jk.nicovideo.jp' or host_key='.jk.nicovideo.jp') and path='/' and not secure and (name='nicosid' or name='user_session' or name='nickname')"`
+	# `sqlite3.exe "{ここをプロファイルフォルダの場所に修正}\\Cookies" -separator = "select name,value from cookies where (host_key='.nicovideo.jp' or host_key='jk.nicovideo.jp' or host_key='.jk.nicovideo.jp') and path='/' and not secure and name='user_session'"`
+	#   特殊な設定をしていなければ、クッキーへのパスは C:\\Users\\{ユーザー名}\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cookies となると思います。
 	# Firefox用
-	# `sqlite3.exe "{ここをプロファイルフォルダの場所に修正}\cookies.sqlite" -separator = "select name,value from moz_cookies where (host='.nicovideo.jp' or host='jk.nicovideo.jp' or host='.jk.nicovideo.jp') and path='/' and not isSecure and (name='nicosid' or name='user_session' or name='nickname')"`
+	# `sqlite3.exe "{ここをプロファイルフォルダの場所に修正}\\cookies.sqlite" -separator = "select name,value from moz_cookies where (host='.nicovideo.jp' or host='jk.nicovideo.jp' or host='.jk.nicovideo.jp') and path='/' and not isSecure and name='user_session'"`
 end
 
 def logging(*str)
@@ -165,7 +175,11 @@ end
 
 def printChatArrayNicoJKFormat(io, arr)
 	arr.each do |c|
-		io.print c.to_s.gsub(/[\r\n]/, {"\r" => '&#13;', "\n" => '&#10;'}), "\r\n"
+		line = c.to_s.gsub(/[\r\n]/, {"\r" => '&#13;', "\n" => '&#10;'})
+		if m = line.match(/^(<chat[^>]+>)(.*<\/chat>)/)
+			line = m[1].gsub(/'/, ?") + m[2]
+		end
+		io.puts line
 	end
 end
 
@@ -193,6 +207,21 @@ if cookie == nil || cookie == ''
 	exit -1
 end
 
-cm = CommentGetter.new(jknum, getCookie)
+cookie.strip!
+cm = CommentGetter.new(jknum, cookie)
 chat = cm.getChatElementsRange(start_time, end_time)
-printChatArrayNicoJKFormat($stdout, chat)
+
+exit 0 if chat.empty?	# 何も無いときは出力無く死ぬ
+
+outfile = $stdout
+fileopen = false
+if ARGV.size >= 4 && ARGV[3] == '-f'
+	outfile = File.open("#{chat.first.attribute('date').to_s}.txt", 'w')
+	fileopen = true
+end
+
+printChatArrayNicoJKFormat(outfile, chat)
+
+if fileopen
+	outfile.close
+end
