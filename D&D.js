@@ -17,8 +17,9 @@ var TSRENAMEC = 'tsrenemec.exe';
 var DOWNLOADSCRIPTARG = '-f -d'
 // 　tsrenameがだすチャンネルめいとjkとのたいおうひょう
 function ChToJk(ch){
-	//テレ東とフジとMXあれば十分という発想
 	return {
+		'ＮＨＫ総合・東京': 'jk1',
+		'日本テレビ': 'jk4',
 		'テレビ東京': 'jk7',
 		'フジテレビジョン': 'jk8',
 		'ＴＯＫＹＯ　ＭＸ': 'jk9'
