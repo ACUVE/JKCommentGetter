@@ -1,5 +1,5 @@
 # encoding: UTF-8
-# Ver.1.2
+# Ver.1.3
 
 # License: GPLv3 or later
 #    This program is free software: you can redistribute it and/or modify
@@ -40,6 +40,9 @@
 # 　　　　出力先のフォルダを指定します。このオプションを指定しない場合、カレントディレクトリに出力されます。
 # 　　　-d, --directory
 # 　　　　チャンネルと同じ名前のフォルダの中にファイルを出力します。フォルダが存在しない場合作成します。
+# 　　　-r num, --retry num
+# 　　　　XMLのパース時や、threadのresultcode != 0の時などに再取得しに行く最大回数。サーバーに負荷をかけない程度にしましょう。
+# 　　　　オプション自体を省略した場合、3となり、始めの1回目+再取得3回で最大4回取得に行きます。
 # 　　　-h, --help
 # 　　　　ヘルプを出力します。
 #
@@ -66,6 +69,9 @@
 # 　　・オプションのパースにGetoptLongを利用するようにした
 # 　　・色々とオプションを追加
 # 　　・ライセンス文章を追加して、無保証性を強調した
+# 　○Ver.1.3 / 2013/07/20
+# 　　・ある程度の異常はめげずにリトライするようにした
+# 　　・リトライしても上手くいかなかったら諦めて落ちるようにした
 
 require 'net/http'
 require 'rexml/document'
@@ -82,6 +88,8 @@ def getCookie
 	#   特殊な設定をしていなければ、クッキーへのパスは C:\\Users\\{ユーザー名}\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cookies となると思います。
 	# Firefox用
 	# `sqlite3.exe "{ここをプロファイルフォルダの場所に修正}\\cookies.sqlite" -separator = "select name,value from moz_cookies where (host='.nicovideo.jp' or host='jk.nicovideo.jp' or host='.jk.nicovideo.jp') and path='/' and not isSecure and name='user_session'"`
+	
+	# ***** Could not extract comments form comment XML. という例外が必ずと言っていい程発生する場合はCookieが正しくない可能性が高いです。 *****
 end
 
 def logging(*str)
@@ -95,9 +103,10 @@ class CommentGetter
 public
 	# jknum: 'jk1'など
 	# cookie: クッキー美味しい
-	def initialize(jknum, cookie)
+	def initialize(jknum, cookie, retrynum)
 		@jknum = jknum
 		@cookie = cookie
+		@retrynum = retrynum
 	end
 	
 	# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
@@ -107,12 +116,22 @@ public
 		crr_time = end_time
 		while 1
 			break if start_time.to_i > crr_time.to_i
-			flv = getFlvInfo(crr_time, crr_time)
-			break if flv == nil	# ここでbreakする時は異常
+			for i in 0..@retrynum
+				if i != 0
+					logging 'flv情報が取得出来なかったため再取得します', ?\n
+					sleep 1
+				end
+				
+				flv = getFlvInfo(crr_time, crr_time)
+				break if flv
+			end
+			raise RuntimeError, 'Could not get flv information.' if flv == nil
+			
 			logging 'スレッド', flv['thread_id'], 'から読み込み開始: start_time=', Time.at(flv['start_time'].to_i), ', end_time=', Time.at(flv['end_time'].to_i), ?\n
 			arr = getThreadComment(start_time, end_time, flv['ms'], flv['http_port'], flv['thread_id'], flv['user_id'])
-			break if arr == nil	# ここでbreakする時は異常
+			raise RuntimeError, 'Could not get thread comments.' if arr == nil
 			logging 'スレッド', flv['thread_id'], 'から読み取り完了: size=', arr.size, ?\n
+			
 			carr = arr + carr
 			crr_time = flv['start_time'].to_i - 1
 		end
@@ -132,10 +151,29 @@ private
 		crr_time = end_time
 		while 1
 			break if start_time.to_i > crr_time.to_i
-			xml = getCommentXML(ms, http_port, thread_id, -1000, crr_time, user_id)
-			break if xml == nil	# ここでbreakする時は異常
-			arr = getChatElementsFromXML(xml)
-			break if arr == nil	# ここでbreakする時は異常
+			
+			for j in 0..@retrynum
+				if j != 0
+					logging 'コメントXMLからコメントが抽出出来なかったため再取得します', ?\n
+					sleep 1
+				end
+				
+				for i in 0..@retrynum
+					if i != 0
+						logging 'コメントXMLが取得出来なかったため再取得します', ?\n
+						sleep 1
+					end
+					
+					xml = getCommentXML(ms, http_port, thread_id, -1000, crr_time, user_id)
+					break if xml
+				end
+				raise RuntimeError, 'Could not get comment XML.' if xml == nil
+				
+				arr = getChatElementsFromXML(xml)
+				break if arr
+			end
+			raise RuntimeError, 'Could not extract comments form comment XML.' if arr == nil
+			
 			if carr.first
 				first_no = carr.first.attribute('no').to_s.to_i
 				index = arr.rindex{|chat| chat.attribute('no').to_s.to_i < first_no}
@@ -195,7 +233,11 @@ private
 		end
 	end
 	def getChatElementsFromXML(xml)
-		doc = REXML::Document.new(xml)
+		begin
+			doc = REXML::Document.new(xml)
+		rescue
+			return nil
+		end
 		return nil if doc.elements['packet/thread'].attribute('resultcode').to_s != '0'
 		
 		ret = []
@@ -253,6 +295,7 @@ def showhelp(io = $stdout)
 	io.puts '  -f [filename]  --file [filename]    出力するファイル名を指定します'
 	io.puts '  -b path  --base-path path           ファイル出力のフォルダを指定します'
 	io.puts '  -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します'
+	io.puts '  -r num  --retry num                 取得エラーが発生した際に再取得へ行く回数'
 	io.puts '  -h  --help                          このヘルプを表示し終了します'
 	io.puts
 	io.puts '    詳細はソースコードをご覧ください'
@@ -272,6 +315,7 @@ opt.set_options(
 	['-f',	'--file',			GetoptLong::OPTIONAL_ARGUMENT],
 	['-b',	'--base-path',		GetoptLong::REQUIRED_ARGUMENT],
 	['-d',	'--directory',		GetoptLong::NO_ARGUMENT],
+	['-r',	'--retry',			GetoptLong::REQUIRED_ARGUMENT],
 	['-h',	'--help',			GetoptLong::NO_ARGUMENT]
 )
 
@@ -282,6 +326,7 @@ errorexit('引数が足りません') if ARGV.size < 3
 errorexit('--marginオプションがおかしいです') if OPT[:m] && !pmnumonly?(OPT[:m])
 errorexit('--start-marginオプションがおかしいです') if OPT[:s] && !pmnumonly?(OPT[:s])
 errorexit('--end-marginオプションがおかしいです') if OPT[:e] && !pmnumonly?(OPT[:e])
+errorexit('--retryオプションがおかしいです') if OPT[:r] && !numonly?(OPT[:r])
 
 jknum = ARGV[0]
 start_time = getTimeFromARGV(ARGV[1])
@@ -291,6 +336,7 @@ errorexit('取得時間範囲のおわりがおかしいです') if end_time == 
 
 start_time -= if OPT[:s] then OPT[:s].to_i elsif OPT[:m] then OPT[:m].to_i else 0 end
 end_time += if OPT[:e] then OPT[:e].to_i elsif OPT[:m] then OPT[:m].to_i else 0 end
+retrynum = if OPT[:r] then OPT[:r].to_i else 3 end
 
 errorexit('取得時間範囲が存在しません') if start_time > end_time
 
@@ -299,7 +345,7 @@ errorexit('--base-pathのディレクトリが存在しません') if !Dir.exist
 
 logging jknum, ' を ', start_time, ' から ', end_time, 'まで取得します', ?\n
 # コメント取得処理
-cm = CommentGetter.new(jknum, cookie)
+cm = CommentGetter.new(jknum, cookie, retrynum)
 chat = cm.getChatElementsRange(start_time, end_time)
 
 if chat.empty?	# 一つもコメントが得られなかった
