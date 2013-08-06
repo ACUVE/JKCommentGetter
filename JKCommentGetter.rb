@@ -1,6 +1,18 @@
 # encoding: UTF-8
-# License: GPLv3
-# Ver.1.1
+# Ver.1.2
+
+# License: GPLv3 or later
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    Please see <http://www.gnu.org/licenses/>.
 
 # ※予め設定が必要です
 # 　Cookieの取得方法が人それぞれのため、getCookieメソッドを自前で実装する必要性があります。
@@ -9,35 +21,61 @@
 # 　ニコニコ実況のコメントをダウンロードするスクリプトです。
 #
 # ■コマンド
-# 　ruby *******.rb チャンネル 取得時間範囲のはじめ 取得時間範囲のおわり [ext.]
-# 　　チャンネル："jk1"など
-# 　　取得時間範囲のはじめ：Unix時または、YYYYMMDDhhmmss形式でも受け付けます。具体的には14桁でない時はUnix時として扱います
-# 　　取得時間範囲のおわり：上に同じ
-# 　　ext.： 第4引数を -f にするとファイルに出力します。ファイル名は「(一番始めのコメントのUnix時).txt」です。
+# 　ruby *******.rb チャンネル 取得時間範囲のはじめ 取得時間範囲のおわり [option....]
+# 　　必須引数：
+# 　　　チャンネル："jk1"など
+# 　　　取得時間範囲のはじめ：Unix時または、YYYYMMDDhhmmss形式でも受け付けます。具体的には14桁でない時はUnix時として扱います
+# 　　　取得時間範囲のおわり：上に同じ
+# 　　オプション：
+# 　　　-m sec, --margin sec
+# 　　　　取得時間範囲の前後を指定秒だけ広げます
+# 　　　-s sec, --start-margin sec
+# 　　　　取得時間範囲のはじめを指定秒だけ早くします。-mによる指定よりも優先されます。
+# 　　　-e sec, --end-margin sec
+# 　　　　取得時間範囲のおわりを指定秒だけ遅くします。-mによる指定よりも優先されます。
+# 　　　-f [filename], --file [filename]
+# 　　　　取得結果を filename に出力します。filenameを省略した場合、「(一番始めのコメントのUnix時).txt」に出力されます。
+# 　　　　オプション自体を省略した場合、標準出力に出力します。
+# 　　　-b path, --base-path path
+# 　　　　出力先のフォルダを指定します。このオプションを指定しない場合、カレントディレクトリに出力されます。
+# 　　　-d, --directory
+# 　　　　チャンネルと同じ名前のフォルダの中にファイルを出力します。フォルダが存在しない場合作成します。
+# 　　　-h, --help
+# 　　　　ヘルプを出力します。
 #
-# 　・例
+# 　・あまりやる気のない例
 # 　　ruby *******.rb jk1 20130101000000 20130101010000 > out.txt
-# 　　　2013年01月01日午前00時00分00秒から2013年01月01日午前01時00分00秒までのjk1のコメントをダウンロードして out.txt に出力
+# 　　　2013年01月01日午前00時00分00秒から2013年01月01日午前01時00分00秒までのjk1のコメントをダウンロードして out.txt に出力。
 # 　　ruby *******.rb jk9 20130714222630 20130714223000 -f
-# 　　　2013年07月14日午後10時26分30秒から2013年07月14日午後10時30分00秒までのjk9のコメントをダウンロードして 1373808390.txt（一番始めのコメントのUnix時）に出力
-# 　　　てーきゅー（TOKYO MX）の時間帯のはずです
-
+# 　　　2013年07月14日午後10時26分30秒から2013年07月14日午後10時30分00秒までのjk9のコメントをダウンロードして 1373808390.txt（一番始めのコメントのUnix時）に出力。
+# 　　　てーきゅー（TOKYO MX）のコメントが取得できるはずです
+# 　　ruby *******.rb jk9 20130714222700 20130714223000 -f -s 30
+# 　　　上と全く同じコメントをダウンロードします。-m, -s, -eは主にスクリプトやバッチでの利用を想定しています。
+# 　　ruby *******.rb jk9 20130714222700 20130714223000 -f -s 30 -d
+# 　　　上と全く同じコメントをダウンロードしますが、 jk9/1373808390.txt に出力されます。
+# 　　ruby *******.rb jk9 20130714222700 20130714223000 -f -s 30 -d -b comm
+# 　　　上と全く同じコメントをダウンロードしますが、 comm/jk9/1373808390.txt に出力されます。ただし、commフォルダが存在しない場合失敗します。
+# 　　　-d, -bも主にスクリプトやバッチでの利用を想定しています。
+#
 # ■更新履歴
 # 　○Ver.1.1 / 2013/07/18
 # 　　・Windowsでちゃんと動くように修正
 # 　　・-f オプションを追加してファイル名の変更の手間を省けるようにした
 # 　　・その他マイナーなバグの修正
-
+# 　○Ver.1.2 / 2013/07/19
+# 　　・オプションのパースにGetoptLongを利用するようにした
+# 　　・色々とオプションを追加
+# 　　・ライセンス文章を追加して、無保証性を強調した
 
 require 'net/http'
 require 'rexml/document'
+require 'getoptlong'
 
 def getCookie
 	# 設定がよくわからなかったらニコニコ動画にログインして http://jk.nicovideo.jp/ を開いて、
 	#       javascript:window.prompt("Cookie","'"+document.cookie+"'")
 	# をアドレス欄に入力してEnter押して、表示されたプロンプトの中身をコピーしてすぐ下の行に貼り付けて、改行があるならば消して一行にまとめれば動くと思います。
 	
-	# 以下のコードはGoogleChrome用のみVer28にて動作確認済み。
 	# ファイルパス中の \ は \\ とする必要性があります。
 	# GoogleChrome用
 	# `sqlite3.exe "{ここをプロファイルフォルダの場所に修正}\\Cookies" -separator = "select name,value from cookies where (host_key='.nicovideo.jp' or host_key='jk.nicovideo.jp' or host_key='.jk.nicovideo.jp') and path='/' and not secure and name='user_session'"`
@@ -184,7 +222,7 @@ def printChatArrayNicoJKFormat(io, arr)
 end
 
 def getTimeFromARGV(str)
-	return nil if str.match(/^\d+$/) == nil
+	return nil if !numonly?(str)
 	if m = str.match(/^(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/)	# YYYYMMDDhhmmss チェック
 		Time.local(m[1], m[2], m[3], m[4], m[5], m[6])
 	else
@@ -192,32 +230,105 @@ def getTimeFromARGV(str)
 	end
 end
 
-exit -1 if ARGV.size < 3
+def numonly?(str)
+	str.match(/^\d+$/) != nil
+end
+def pmnumonly?(str)
+	str.match(/^[+-]?\d+$/) != nil
+end
+
+def errorexit(str)
+	$stderr.puts "** #{str} **"
+	$stderr.puts
+	showhelp($stderr)
+	exit -1
+end
+
+def showhelp(io = $stdout)
+	io.puts "Usage: ruby #{$0} チャンネル 取得時間範囲のはじめ 取得時間範囲のおわり [option...]"
+	io.puts 'Options:'
+	io.puts '  -m sec  --margin sec                取得時間範囲の前後を指定秒だけ広げます'
+	io.puts '  -s sec  --start-margin sec          取得時間範囲のはじめを指定秒だけ早くします'
+	io.puts '  -e sec  --end-margin sec            取得時間範囲のおわりを指定秒だけ遅くします'
+	io.puts '  -f [filename]  --file [filename]    出力するファイル名を指定します'
+	io.puts '  -b path  --base-path path           ファイル出力のフォルダを指定します'
+	io.puts '  -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します'
+	io.puts '  -h  --help                          このヘルプを表示し終了します'
+	io.puts
+	io.puts '    詳細はソースコードをご覧ください'
+end
+
+# クッキーが設定されているかテスト
+cookie = getCookie
+errorexit('Cookieが設定されていません 設定を行なってください') if cookie == nil || cookie == ''
+cookie.strip!
+
+# オプションのパース
+opt = GetoptLong.new
+opt.set_options(
+	['-m',	'--margin',			GetoptLong::REQUIRED_ARGUMENT],
+	['-s',	'--start-margin',	GetoptLong::REQUIRED_ARGUMENT],
+	['-e',	'--end-margin',		GetoptLong::REQUIRED_ARGUMENT],
+	['-f',	'--file',			GetoptLong::OPTIONAL_ARGUMENT],
+	['-b',	'--base-path',		GetoptLong::REQUIRED_ARGUMENT],
+	['-d',	'--directory',		GetoptLong::NO_ARGUMENT],
+	['-h',	'--help',			GetoptLong::NO_ARGUMENT]
+)
+
+OPT = {}
+opt.each{|n, a| OPT[n[1].to_sym] = a}
+if OPT[:h] then showhelp; exit 0 end
+errorexit('引数が足りません') if ARGV.size < 3
+errorexit('--marginオプションがおかしいです') if OPT[:m] && !pmnumonly?(OPT[:m])
+errorexit('--start-marginオプションがおかしいです') if OPT[:s] && !pmnumonly?(OPT[:s])
+errorexit('--end-marginオプションがおかしいです') if OPT[:e] && !pmnumonly?(OPT[:e])
 
 jknum = ARGV[0]
 start_time = getTimeFromARGV(ARGV[1])
 end_time = getTimeFromARGV(ARGV[2])
+errorexit('取得時間範囲のはじめがおかしいです') if start_time == nil
+errorexit('取得時間範囲のおわりがおかしいです') if end_time == nil
 
-exit -1 if start_time == nil || end_time == nil
+start_time -= if OPT[:s] then OPT[:s].to_i elsif OPT[:m] then OPT[:m].to_i else 0 end
+end_time += if OPT[:e] then OPT[:e].to_i elsif OPT[:m] then OPT[:m].to_i else 0 end
 
-cookie = getCookie
+errorexit('取得時間範囲が存在しません') if start_time > end_time
 
-if cookie == nil || cookie == ''
-	$stderr.puts 'Cookieが設定されていません。設定を行なってください。'
-	exit -1
-end
+base_path = File.expand_path(OPT[:b] || '') + ?/
+errorexit('--base-pathのディレクトリが存在しません') if !Dir.exist?(base_path)
 
-cookie.strip!
+logging jknum, ' を ', start_time, ' から ', end_time, 'まで取得します', ?\n
+# コメント取得処理
 cm = CommentGetter.new(jknum, cookie)
 chat = cm.getChatElementsRange(start_time, end_time)
 
-exit 0 if chat.empty?	# 何も無いときは出力無く死ぬ
+if chat.empty?	# 一つもコメントが得られなかった
+	$stderr.puts 'コメントが一つも得られませんでした。エラーだと考えられます。'
+	exit 1
+end
 
 outfile = $stdout
 fileopen = false
-if ARGV.size >= 4 && ARGV[3] == '-f'
-	outfile = File.open("#{chat.first.attribute('date').to_s}.txt", 'w')
-	fileopen = true
+if OPT[:f]
+	filename = if OPT[:f].empty? then "#{chat.first.attribute('date').to_s}.txt" else OPT[:f] end
+	if OPT[:d]
+		dirpath = base_path + jknum + ?/
+		if !Dir.exist?(dirpath)
+			begin
+				Dir.mkdir(dirpath)
+				fullpath = dirpath + filename
+			rescue
+				logging 'フォルダの作成に失敗しました', ?\n
+				fullpath = base_path + filename
+			end
+		else
+			fullpath = dirpath + filename
+		end
+	else
+		fullpath = base_path + filename
+	end
+	logging fullpath, ' へ出力します', ?\n
+	outfile = File.open(fullpath, 'w')
 end
 
 printChatArrayNicoJKFormat(outfile, chat)
