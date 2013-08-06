@@ -1,5 +1,5 @@
 # encoding: UTF-8
-# Ver.1.3
+# JKCommentGetter Ver.1.4
 
 # License: GPLv3 or later
 #    This program is free software: you can redistribute it and/or modify
@@ -24,15 +24,15 @@
 # 　ruby *******.rb チャンネル 取得時間範囲のはじめ 取得時間範囲のおわり [option....]
 # 　　必須引数：
 # 　　　チャンネル："jk1"など
-# 　　　取得時間範囲のはじめ：Unix時または、YYYYMMDDhhmmss形式でも受け付けます。具体的には14桁でない時はUnix時として扱います
-# 　　　取得時間範囲のおわり：上に同じ
+# 　　　取得時間範囲のはじめ：Unix時または、YYYYMMDDhhmmss形式でも受け付けます。具体的には14桁でない時はUnix時として扱います。
+# 　　　取得時間範囲のおわり：上に同じ。
 # 　　オプション：
 # 　　　-m sec, --margin sec
-# 　　　　取得時間範囲の前後を指定秒だけ広げます
+# 　　　　取得時間範囲の前後を指定秒だけ広げます。負の値も受け付けます。
 # 　　　-s sec, --start-margin sec
-# 　　　　取得時間範囲のはじめを指定秒だけ早くします。-mによる指定よりも優先されます。
+# 　　　　取得時間範囲のはじめを指定秒だけ早くします。-mによる指定よりも優先されます。負の値も受け付けます。
 # 　　　-e sec, --end-margin sec
-# 　　　　取得時間範囲のおわりを指定秒だけ遅くします。-mによる指定よりも優先されます。
+# 　　　　取得時間範囲のおわりを指定秒だけ遅くします。-mによる指定よりも優先されます。負の値も受け付けます。
 # 　　　-f [filename], --file [filename]
 # 　　　　取得結果を filename に出力します。filenameを省略した場合、「(一番始めのコメントのUnix時).txt」に出力されます。
 # 　　　　オプション自体を省略した場合、標準出力に出力します。
@@ -40,9 +40,24 @@
 # 　　　　出力先のフォルダを指定します。このオプションを指定しない場合、カレントディレクトリに出力されます。
 # 　　　-d, --directory
 # 　　　　チャンネルと同じ名前のフォルダの中にファイルを出力します。フォルダが存在しない場合作成します。
+# 　　　-c, --check-file
+# 　　　　取得時間範囲がよく似たファイルが存在するかチェックします。存在した場合ダウンロード処理を行いません。判定の詳細は -a オプションの説明をご覧下さい。
+# 　　　　-f の [filename] が省略され、かつ -d が指定されている場合のみ有効になります。
+# 　　　-a, --check-range sec
+# 　　　　取得時間範囲のはじめから前後指定秒内のコメントから始まり、かつ取得時間範囲のおわりから前後指定秒内のコメントで終わるファイルをよく似たファイルと判定するようにします。
+# 　　　　省略した場合 60 となります。
+# 　　　　コメントファイルのはじめの時間はファイル名から取得し、おわりの時間は最終行のコメントから取得します。
+# 　　　　ファイル名の時間は全てUnix時として扱います。
+# 　　　　　・簡単な図解
+# 　　　　　　  →→→→→→→→→→→→→→→→→→→→→→→時間の流れ→→→→→→→→→→→→→→→→→→→→→→→
+# 　　　　　　      ↓取得時間範囲のはじめ                                                取得時間範囲のおわり↓
+# 　　　　　　      ├─────────────────────────────────────────────┤    ：取得時間範囲
+# 　　　　　　  ┌─┴─┐                                                                                  ┌─┴─┐：前後それぞれ指定秒だけ幅ができる
+# 　　　　　　         ├───────────────────────────────────────────┤     ：このようなコメントファイルがあればダウンロードしない
+# 　　　　　　            ├───────────────────────────────────────────┤  ：このようなコメントファイルがあってもダウンロードする
 # 　　　-r num, --retry num
-# 　　　　XMLのパース時や、threadのresultcode != 0の時などに再取得しに行く最大回数。サーバーに負荷をかけない程度にしましょう。
-# 　　　　オプション自体を省略した場合、3となり、始めの1回目+再取得3回で最大4回取得に行きます。
+# 　　　　エラーが発生した際に再取得しに行く最大回数。サーバーに負荷をかけない程度にしましょう。
+# 　　　　オプション自体を省略した場合、 3 となり、始めの1回目+再取得3回で最大4回取得に行きます。
 # 　　　-h, --help
 # 　　　　ヘルプを出力します。
 #
@@ -72,6 +87,9 @@
 # 　○Ver.1.3 / 2013/07/20
 # 　　・ある程度の異常はめげずにリトライするようにした
 # 　　・リトライしても上手くいかなかったら諦めて落ちるようにした
+# 　○Ver.1.4 / 2013/07/24
+# 　　・スクリプトに名前をつけた
+# 　　・同じような時間帯のコメントをダウンロードしないようにするオプションを追加
 
 require 'net/http'
 require 'rexml/document'
@@ -295,6 +313,8 @@ def showhelp(io = $stdout)
 	io.puts '  -f [filename]  --file [filename]    出力するファイル名を指定します'
 	io.puts '  -b path  --base-path path           ファイル出力のフォルダを指定します'
 	io.puts '  -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します'
+	io.puts '  -c  --check-file                    取得時間範囲がよく似たファイルが存在する場合ダウンロードしなくなります'
+	io.puts '  -a sec  --check-range sec           よく似たファイルと判定する時間範囲を設定します'
 	io.puts '  -r num  --retry num                 取得エラーが発生した際に再取得へ行く回数'
 	io.puts '  -h  --help                          このヘルプを表示し終了します'
 	io.puts
@@ -315,6 +335,8 @@ opt.set_options(
 	['-f',	'--file',			GetoptLong::OPTIONAL_ARGUMENT],
 	['-b',	'--base-path',		GetoptLong::REQUIRED_ARGUMENT],
 	['-d',	'--directory',		GetoptLong::NO_ARGUMENT],
+	['-c',	'--check-file',		GetoptLong::NO_ARGUMENT],
+	['-a',	'--check-range',	GetoptLong::REQUIRED_ARGUMENT],
 	['-r',	'--retry',			GetoptLong::REQUIRED_ARGUMENT],
 	['-h',	'--help',			GetoptLong::NO_ARGUMENT]
 )
@@ -327,6 +349,7 @@ errorexit('--marginオプションがおかしいです') if OPT[:m] && !pmnumon
 errorexit('--start-marginオプションがおかしいです') if OPT[:s] && !pmnumonly?(OPT[:s])
 errorexit('--end-marginオプションがおかしいです') if OPT[:e] && !pmnumonly?(OPT[:e])
 errorexit('--retryオプションがおかしいです') if OPT[:r] && !numonly?(OPT[:r])
+errorexit('--check-rangeオプションがおかしいです') if OPT[:a] && !numonly?(OPT[:a])
 
 jknum = ARGV[0]
 start_time = getTimeFromARGV(ARGV[1])
@@ -337,11 +360,29 @@ errorexit('取得時間範囲のおわりがおかしいです') if end_time == 
 start_time -= if OPT[:s] then OPT[:s].to_i elsif OPT[:m] then OPT[:m].to_i else 0 end
 end_time += if OPT[:e] then OPT[:e].to_i elsif OPT[:m] then OPT[:m].to_i else 0 end
 retrynum = if OPT[:r] then OPT[:r].to_i else 3 end
+check_range = if OPT[:a] then OPT[:a].to_i else 60 end
 
 errorexit('取得時間範囲が存在しません') if start_time > end_time
 
 base_path = File.expand_path(OPT[:b] || '') + ?/
 errorexit('--base-pathのディレクトリが存在しません') if !Dir.exist?(base_path)
+
+# よく似た時間のコメントファイルが存在しないかのチェック
+if OPT[:c] && OPT[:f] && OPT[:d]
+	dirpath = base_path + jknum + ?/
+	Dir.exist?(dirpath) && Dir.glob(dirpath + ?*).each do |file|
+		if File.exist?(file) && (m = File.basename(file).match(/^\d+/)) && (m[0].to_i - start_time.to_i).abs <= check_range
+			File.open(file) do |file|
+				ll = file.readlines.last
+				if (m = ll.force_encoding('UTF-8').match(/^<chat[^>]+date="(\d+)"[^>]*>.*<\/chat>/)) && (m[1].to_i - end_time.to_i).abs <= check_range
+					logging 'ダウンロードしようとしている取得時間範囲によく似た時間帯のコメントファイルが存在するためダウンロードを行いません。', ?\n
+					exit 0
+				end
+			end
+			logging file, ?\n
+		end
+	end
+end
 
 logging jknum, ' を ', start_time, ' から ', end_time, 'まで取得します', ?\n
 # コメント取得処理
