@@ -1,5 +1,5 @@
 # encoding: UTF-8
-# JKCommentGetter Ver.1.5
+# JKCommentGetter Ver.1.6
 
 # License: GPLv3 or later
 #    This program is free software: you can redistribute it and/or modify
@@ -30,19 +30,22 @@
 # 　　　-m sec, --margin sec
 # 　　　　取得時間範囲の前後を指定秒だけ広げます。負の値も受け付けます。
 # 　　　-s sec, --start-margin sec
-# 　　　　取得時間範囲のはじめを指定秒だけ早くします。-mによる指定よりも優先されます。負の値も受け付けます。
+# 　　　　取得時間範囲のはじめを指定秒だけ早くします。 -m による指定よりも優先されます。負の値も受け付けます。
 # 　　　-e sec, --end-margin sec
-# 　　　　取得時間範囲のおわりを指定秒だけ遅くします。-mによる指定よりも優先されます。負の値も受け付けます。
+# 　　　　取得時間範囲のおわりを指定秒だけ遅くします。 -m による指定よりも優先されます。負の値も受け付けます。
 # 　　　-f [filename], --file [filename]
-# 　　　　取得結果を filename に出力します。filenameを省略した場合、「(一番始めのコメントのUnix時).txt」に出力されます。
+# 　　　　取得結果を filename に出力します。filenameを省略した場合、「(一番始めのコメントのUnix時).（フォーマット固有の拡張子）」に出力されます。
 # 　　　　オプション自体を省略した場合、標準出力に出力します。
+# 　　　-x, --xml
+# 　　　　出力形式をXMLにします。chatタグ以外の情報は失われています。
+# 　　　　このオプションを指定すると、 -c が無視されます。
 # 　　　-b path, --base-path path
 # 　　　　出力先のフォルダを指定します。このオプションを指定しない場合、カレントディレクトリに出力されます。
 # 　　　-d, --directory
 # 　　　　チャンネルと同じ名前のフォルダの中にファイルを出力します。フォルダが存在しない場合作成します。
 # 　　　-c, --check-file
 # 　　　　取得時間範囲がよく似たファイルが存在するかチェックします。存在した場合ダウンロード処理を行いません。判定の詳細は -a オプションの説明をご覧下さい。
-# 　　　　-f の [filename] が省略され、かつ -d が指定されている場合のみ有効になります。
+# 　　　　-f の [filename] が省略され、かつ -d が指定されており、 -x が指定されていない場合のみ有効になります。
 # 　　　-a, --check-range sec
 # 　　　　取得時間範囲のはじめから前後指定秒内のコメントから始まり、かつ取得時間範囲のおわりから前後指定秒内のコメントで終わるファイルをよく似たファイルと判定するようにします。
 # 　　　　省略した場合 60 となります。
@@ -94,6 +97,9 @@
 # 　　・同じような時間帯のコメントをダウンロードしないようにするオプションを追加
 # 　○Ver.1.5 / 2013/08/06
 # 　　・Cookieを引数から与えられるようにした
+# 　○Ver.1.6 / 2013/11/10
+# 　　・XML形式でも出力できるようにした
+# 　　・軽微なバグ修正
 
 require 'net/http'
 require 'rexml/document'
@@ -287,6 +293,23 @@ def printChatArrayNicoJKFormat(io, arr)
 	end
 end
 
+def printChatArrayXML(io, arr)
+	io.puts <<-'EOS'
+<?xml version="1.0" encoding="UTF-8"?>
+<packet>
+	EOS
+	
+	arr.each do |c|
+		cs = c.to_s
+		if m = cs.match(/^(<chat[^>]+>)(.*<\/chat>)/)
+			cs = m[1].gsub(/'/, ?") + m[2]
+		end
+		io.print '  ', cs, ?\n
+	end
+	
+	io.puts '</packet>'
+end
+
 def getTimeFromARGV(str)
 	return nil if !numonly?(str)
 	if m = str.match(/^(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/)	# YYYYMMDDhhmmss チェック
@@ -317,6 +340,7 @@ def showhelp(io = $stdout)
 	io.puts '  -s sec  --start-margin sec          取得時間範囲のはじめを指定秒だけ早くします'
 	io.puts '  -e sec  --end-margin sec            取得時間範囲のおわりを指定秒だけ遅くします'
 	io.puts '  -f [filename]  --file [filename]    出力するファイル名を指定します'
+	io.puts '  -x  --xml                           出力フォーマットをXMLにします'
 	io.puts '  -b path  --base-path path           ファイル出力のフォルダを指定します'
 	io.puts '  -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します'
 	io.puts '  -c  --check-file                    取得時間範囲がよく似たファイルが存在する場合ダウンロードしなくなります'
@@ -336,6 +360,7 @@ opt.set_options(
 	['-s',	'--start-margin',	GetoptLong::REQUIRED_ARGUMENT],
 	['-e',	'--end-margin',		GetoptLong::REQUIRED_ARGUMENT],
 	['-f',	'--file',			GetoptLong::OPTIONAL_ARGUMENT],
+	['-x',	'--xml',			GetoptLong::NO_ARGUMENT],
 	['-b',	'--base-path',		GetoptLong::REQUIRED_ARGUMENT],
 	['-d',	'--directory',		GetoptLong::NO_ARGUMENT],
 	['-c',	'--check-file',		GetoptLong::NO_ARGUMENT],
@@ -377,7 +402,7 @@ base_path = File.expand_path(OPT[:b] || '') + ?/
 errorexit('--base-pathのディレクトリが存在しません') if !Dir.exist?(base_path)
 
 # よく似た時間のコメントファイルが存在しないかのチェック
-if OPT[:c] && OPT[:f] && OPT[:d]
+if OPT[:c] && (OPT[:f] && OPT[:f].empty?) && OPT[:d] && !OPT[:x]
 	dirpath = base_path + jknum + ?/
 	Dir.exist?(dirpath) && Dir.glob(dirpath + ?*).each do |file|
 		if File.exist?(file) && (m = File.basename(file).match(/^\d+/)) && (m[0].to_i - start_time.to_i).abs <= check_range
@@ -406,7 +431,7 @@ end
 outfile = $stdout
 fileopen = false
 if OPT[:f]
-	filename = if OPT[:f].empty? then "#{chat.first.attribute('date').to_s}.txt" else OPT[:f] end
+	filename = if OPT[:f].empty? then "#{chat.first.attribute('date').to_s}.#{if OPT[:x] then 'xml' else 'txt' end}" else OPT[:f] end
 	if OPT[:d]
 		dirpath = base_path + jknum + ?/
 		if !Dir.exist?(dirpath)
@@ -425,9 +450,14 @@ if OPT[:f]
 	end
 	logging fullpath, ' へ出力します', ?\n
 	outfile = File.open(fullpath, 'w')
+	fileopen = true
 end
 
-printChatArrayNicoJKFormat(outfile, chat)
+if !OPT[:x]
+	printChatArrayNicoJKFormat(outfile, chat)
+else
+	printChatArrayXML(outfile, chat)
+end
 
 if fileopen
 	outfile.close
