@@ -10,7 +10,7 @@
 // ※-fをつけないとなぜかとまります
 // ☆せってい
 // 　ダウンロードするためスクリプトのファイルめい
-var DOWNLOADSCRIPT = '';
+var DOWNLOADSCRIPT = 'JKCommentGetter.rb';
 // 　TsRenamec のファイルめい
 var TSRENAMEC = 'tsrenemec.exe';
 // 　ダウンロードするためのスクリプトにわたすパラメータ
