@@ -37,15 +37,18 @@
 # 　　　　取得結果を filename に出力します。filenameを省略した場合、「(一番始めのコメントのUnix時).(フォーマット固有の拡張子)」に出力されます。
 # 　　　　オプション自体を省略した場合、標準出力に出力します。
 # 　　　-x, --xml
-# 　　　　出力形式をXMLにします。chatタグ以外の情報は失われています。
-# 　　　　このオプションを指定すると、 -c が無視されます。
+# 　　　　出力フォーマットをXMLにします。chatタグ以外の情報は失われています。
+# 　　　　このオプションを指定すると、 -c が無視されます。 -j と同時に指定できません。
+# 　　　-j, --jkl
+# 　　　　出力フォーマットをJikkyoRec互換っぽくします。chatタグ以外の情報は失われています。
+# 　　　　このオプションを指定すると、 -c が無視されます。 -x と同時に指定できません。
 # 　　　-b path, --base-path path
 # 　　　　出力先のフォルダを指定します。このオプションを指定しない場合、カレントディレクトリに出力されます。
 # 　　　-d, --directory
 # 　　　　チャンネルと同じ名前のフォルダの中にファイルを出力します。フォルダが存在しない場合作成します。
 # 　　　-c, --check-file
 # 　　　　取得時間範囲がよく似たファイルが存在するかチェックします。存在した場合ダウンロード処理を行いません。判定の詳細は -a オプションの説明をご覧下さい。
-# 　　　　-f の [filename] が省略され、かつ -d が指定されており、 -x が指定されていない場合のみ有効になります。
+# 　　　　-f の [filename] が省略され、かつ -d が指定されており、 -x または -j が指定されていない場合のみ有効になります。
 # 　　　-a, --check-range sec
 # 　　　　取得時間範囲のはじめから前後指定秒内のコメントから始まり、かつ取得時間範囲のおわりから前後指定秒内のコメントで終わるファイルをよく似たファイルと判定するようにします。
 # 　　　　省略した場合 60 となります。
@@ -100,6 +103,8 @@
 # 　○Ver.1.6 / 2013/11/10
 # 　　・XML形式でも出力できるようにした
 # 　　・軽微なバグ修正
+# 　○Ver.1.7 / 2013/11/12
+# 　　・JikkyoRec形式でも出力できるようにした
 
 require 'net/http'
 require 'rexml/document'
@@ -310,6 +315,20 @@ def printChatArrayXML(io, arr)
 	io.puts '</packet>'
 end
 
+def printChatArrayJikkyoRec(io, arr)
+	# ここでARGVを使うのは行儀がよくないかな
+	io.puts %Q(<JikkyoRec startTime="#{getTimeFromARGV(ARGV[1]).to_i}000" channel="#{ARGV[0]}" />)
+	io.puts
+	
+	arr.each do |c|
+		cs = c.to_s
+		if m = cs.match(/^(<chat[^>]+>)(.*<\/chat>)/)
+			cs = m[1].gsub(/'/, ?") + m[2]
+		end
+		io.puts cs
+	end
+end
+
 def getTimeFromARGV(str)
 	return nil if !numonly?(str)
 	if m = str.match(/^(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/)	# YYYYMMDDhhmmss チェック
@@ -341,6 +360,7 @@ def showhelp(io = $stdout)
 	io.puts '  -e sec  --end-margin sec            取得時間範囲のおわりを指定秒だけ遅くします'
 	io.puts '  -f [filename]  --file [filename]    出力するファイル名を指定します'
 	io.puts '  -x  --xml                           出力フォーマットをXMLにします'
+	io.puts '  -j  --jkl                           出力フォーマットをJikkyoRec互換っぽくします'
 	io.puts '  -b path  --base-path path           ファイル出力のフォルダを指定します'
 	io.puts '  -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します'
 	io.puts '  -c  --check-file                    取得時間範囲がよく似たファイルが存在する場合ダウンロードしなくなります'
@@ -361,6 +381,7 @@ opt.set_options(
 	['-e',	'--end-margin',		GetoptLong::REQUIRED_ARGUMENT],
 	['-f',	'--file',			GetoptLong::OPTIONAL_ARGUMENT],
 	['-x',	'--xml',			GetoptLong::NO_ARGUMENT],
+	['-j',	'--jkl',			GetoptLong::NO_ARGUMENT],
 	['-b',	'--base-path',		GetoptLong::REQUIRED_ARGUMENT],
 	['-d',	'--directory',		GetoptLong::NO_ARGUMENT],
 	['-c',	'--check-file',		GetoptLong::NO_ARGUMENT],
@@ -379,6 +400,7 @@ errorexit('--start-marginオプションがおかしいです') if OPT[:s] && !p
 errorexit('--end-marginオプションがおかしいです') if OPT[:e] && !pmnumonly?(OPT[:e])
 errorexit('--retryオプションがおかしいです') if OPT[:r] && !numonly?(OPT[:r])
 errorexit('--check-rangeオプションがおかしいです') if OPT[:a] && !numonly?(OPT[:a])
+errorexit('--xmlオプションと--jklオプションは同時に指定できません') if OPT[:x] && OPT[:j]
 
 # クッキーが設定されているかテスト
 cookie = OPT[:i] || getCookie
@@ -402,7 +424,7 @@ base_path = File.expand_path(OPT[:b] || '') + ?/
 errorexit('--base-pathのディレクトリが存在しません') if !Dir.exist?(base_path)
 
 # よく似た時間のコメントファイルが存在しないかのチェック
-if OPT[:c] && (OPT[:f] && OPT[:f].empty?) && OPT[:d] && !OPT[:x]
+if OPT[:c] && (OPT[:f] && OPT[:f].empty?) && OPT[:d] && !(OPT[:x] || OPT[:j])
 	dirpath = base_path + jknum + ?/
 	Dir.exist?(dirpath) && Dir.glob(dirpath + ?*).each do |file|
 		if File.exist?(file) && (m = File.basename(file).match(/^\d+/)) && (m[0].to_i - start_time.to_i).abs <= check_range
@@ -431,7 +453,7 @@ end
 outfile = $stdout
 fileopen = false
 if OPT[:f]
-	filename = if OPT[:f].empty? then "#{chat.first.attribute('date').to_s}.#{if OPT[:x] then 'xml' else 'txt' end}" else OPT[:f] end
+	filename = if OPT[:f].empty? then "#{chat.first.attribute('date').to_s}.#{if OPT[:x] then 'xml' elsif OPT[:j] then 'jkl' else 'txt' end}" else OPT[:f] end
 	if OPT[:d]
 		dirpath = base_path + jknum + ?/
 		if !Dir.exist?(dirpath)
@@ -453,10 +475,12 @@ if OPT[:f]
 	fileopen = true
 end
 
-if !OPT[:x]
-	printChatArrayNicoJKFormat(outfile, chat)
-else
+if OPT[:x]
 	printChatArrayXML(outfile, chat)
+elsif OPT[:j]
+	printChatArrayJikkyoRec(outfile, chat)
+else
+	printChatArrayNicoJKFormat(outfile, chat)
 end
 
 if fileopen
