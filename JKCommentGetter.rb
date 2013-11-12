@@ -1,5 +1,5 @@
 # encoding: UTF-8
-# JKCommentGetter Ver.1.6
+# JKCommentGetter Ver.1.7
 
 # License: GPLv3 or later
 #    This program is free software: you can redistribute it and/or modify
