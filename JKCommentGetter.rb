@@ -1,5 +1,5 @@
 # encoding: UTF-8
-# JKCommentGetter Ver.1.7
+# JKCommentGetter Ver.1.7.1
 
 # License: GPLv3 or later
 #    This program is free software: you can redistribute it and/or modify
@@ -105,6 +105,8 @@
 # 　　・軽微なバグ修正
 # 　○Ver.1.7 / 2013/11/12
 # 　　・JikkyoRec形式でも出力できるようにした
+# 　○Ver.1.7.1 / 2013/11/13
+# 　　・REXMLの設定を利用して、ワークアラウンド的な処理を削除
 
 require 'net/http'
 require 'rexml/document'
@@ -270,6 +272,7 @@ private
 	def getChatElementsFromXML(xml)
 		begin
 			doc = REXML::Document.new(xml)
+			doc.context[:attribute_quote] = :quote
 		rescue
 			return nil
 		end
@@ -290,11 +293,7 @@ end
 
 def printChatArrayNicoJKFormat(io, arr)
 	arr.each do |c|
-		line = c.to_s.gsub(/[\r\n]/, {"\r" => '&#13;', "\n" => '&#10;'})
-		if m = line.match(/^(<chat[^>]+>)(.*<\/chat>)/)
-			line = m[1].gsub(/'/, ?") + m[2]
-		end
-		io.puts line
+		io.puts c.to_s.gsub(/[\r\n]/, {"\r" => '&#13;', "\n" => '&#10;'})
 	end
 end
 
@@ -305,11 +304,7 @@ def printChatArrayXML(io, arr)
 	EOS
 	
 	arr.each do |c|
-		cs = c.to_s
-		if m = cs.match(/^(<chat[^>]+>)(.*<\/chat>)/)
-			cs = m[1].gsub(/'/, ?") + m[2]
-		end
-		io.print '  ', cs, ?\n
+		io.print '  ', c.to_s, ?\n
 	end
 	
 	io.puts '</packet>'
@@ -321,11 +316,7 @@ def printChatArrayJikkyoRec(io, arr)
 	io.puts
 	
 	arr.each do |c|
-		cs = c.to_s
-		if m = cs.match(/^(<chat[^>]+>)(.*<\/chat>)/)
-			cs = m[1].gsub(/'/, ?") + m[2]
-		end
-		io.puts cs
+		io.puts c.to_s
 	end
 end
 
