@@ -291,9 +291,41 @@ private
 	end
 end
 
+# pasted from rexml/formatters/default.rb
+class MyFormatter < REXML::Formatters::Default
+  FrontAttributes = 'thread no vpos date mail yourpost user_id premium anonymity'.split
+  def write_element( node, output )
+    output << "<#{node.expanded_name}"
+
+    node.attributes.to_a.map { |a|
+      Hash === a ? a.values : a
+    }.flatten.sort_by {|attr| "%02d#{attr.name}" % (FrontAttributes.index(attr.name) || 99)}.each do |attr|
+      output << " "
+      attr.write( output )
+    end unless node.attributes.empty?
+
+    if node.children.empty?
+      output << " " if @ie_hack
+      output << "/"
+    else
+      output << ">"
+      node.children.each { |child|
+        write( child, s = "" )
+        output << s.gsub( /&apos;|&quot;/, {"&apos;" => "'", "&quot;" => '"'} )
+      }
+      output << "</#{node.expanded_name}"
+    end
+    output << ">"
+  end
+end
+
 def printChatArrayNicoJKFormat(io, arr)
+	io.puts "<!-- Fetched logfile from #{Time.at(arr.first.attribute('date').to_s.to_i).strftime('%FT%T')} -->" unless arr.empty?
+	
+	f = MyFormatter.new
 	arr.each do |c|
-		io.puts c.to_s.gsub(/[\r\n]/, {"\r" => '&#13;', "\n" => '&#10;'})
+		f.write(c, s = '')
+		io.puts s.gsub(/[\r\n]/, {"\r" => '&#13;', "\n" => '&#10;'})
 	end
 end
 
@@ -303,8 +335,10 @@ def printChatArrayXML(io, arr)
 <packet>
 	EOS
 	
+	f = MyFormatter.new
 	arr.each do |c|
-		io.print '  ', c.to_s, ?\n
+		f.write(c, s = '')
+		io.print '  ', s, ?\n
 	end
 	
 	io.puts '</packet>'
@@ -315,8 +349,10 @@ def printChatArrayJikkyoRec(io, arr)
 	io.puts %Q(<JikkyoRec startTime="#{getTimeFromARGV(ARGV[1]).to_i}000" channel="#{ARGV[0]}" />)
 	io.puts
 	
+	f = MyFormatter.new
 	arr.each do |c|
-		io.puts c.to_s
+		f.write(c, s = '')
+		io.puts s
 	end
 end
 
