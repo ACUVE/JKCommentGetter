@@ -1,5 +1,5 @@
 # encoding: UTF-8
-# JKCommentGetter Ver.1.7.1
+# JKCommentGetter Ver.1.7.2
 
 # License: GPLv3 or later
 #    This program is free software: you can redistribute it and/or modify
@@ -42,6 +42,11 @@
 # 　　　-j, --jkl
 # 　　　　出力フォーマットをJikkyoRec互換っぽくします。chatタグ以外の情報は失われています。
 # 　　　　このオプションを指定すると、 -c が無視されます。 -x と同時に指定できません。
+# 　　　-t, --time-header
+# 　　　　出力フォーマットがNicoJKの時、一行目に時刻ヘッダとして
+# 　　　　　<!-- Fetched logfile from 2013-01-01T00:00:00+09:00 -->
+# 　　　　等と追加します。出力される時刻は、取得できたコメントの一番初めのコメントの時刻です。
+# 　　　　NicoJKフォーマット以外の場合は無視されます。
 # 　　　-b path, --base-path path
 # 　　　　出力先のフォルダを指定します。このオプションを指定しない場合、カレントディレクトリに出力されます。
 # 　　　-d, --directory
@@ -107,6 +112,10 @@
 # 　　・JikkyoRec形式でも出力できるようにした
 # 　○Ver.1.7.1 / 2013/11/13
 # 　　・REXMLの設定を利用して、ワークアラウンド的な処理を削除
+# 　○Ver.1.7.2 / 2013/11/17
+# 　　・chatタグの属性の順番が生のXMLと同じになるように変更（>>887氏）
+# 　　・「"」「'」がそれぞれ「&quot;」「&apos;」に置き換わらないように修正（>>887氏）
+# 　　・NicoJKフォーマットの場合、一行目にヘッダを入れるオプションを追加（>>887氏）
 
 require 'net/http'
 require 'rexml/document'
@@ -293,34 +302,42 @@ end
 
 # pasted from rexml/formatters/default.rb
 class MyFormatter < REXML::Formatters::Default
-  FrontAttributes = 'thread no vpos date mail yourpost user_id premium anonymity'.split
-  def write_element( node, output )
-    output << "<#{node.expanded_name}"
-
-    node.attributes.to_a.map { |a|
-      Hash === a ? a.values : a
-    }.flatten.sort_by {|attr| "%02d#{attr.name}" % (FrontAttributes.index(attr.name) || 99)}.each do |attr|
-      output << " "
-      attr.write( output )
-    end unless node.attributes.empty?
-
-    if node.children.empty?
-      output << " " if @ie_hack
-      output << "/"
-    else
-      output << ">"
-      node.children.each { |child|
-        write( child, s = "" )
-        output << s.gsub( /&apos;|&quot;/, {"&apos;" => "'", "&quot;" => '"'} )
-      }
-      output << "</#{node.expanded_name}"
-    end
-    output << ">"
-  end
+	FrontAttributes = %w(thread no vpos date mail yourpost user_id premium anonymity)
+	
+	def write_element(node, output)
+		output << "<#{node.expanded_name}"
+		
+		node.attributes.to_a.map{|a|
+			Hash === a ? a.values : a
+		}.flatten.sort_by{|attr| "%02d#{attr.name}" % (FrontAttributes.index(attr.name) || 99)}.each do |attr|
+			output << " "
+			attr.write(output)
+		end unless node.attributes.empty?
+		
+		if node.children.empty?
+			output << " " if @ie_hack
+			output << "/"
+		else
+			output << ">"
+			node.children.each{|child|
+				write(child, s = "")
+				output << s
+			}
+			output << "</#{node.expanded_name}"
+		end
+		output << ">"
+	end
+	
+	def write_text(node, output)
+		output << node.to_s.gsub(/&apos;|&quot;/, {"&apos;" => "'", "&quot;" => '"'})
+	end
 end
 
 def printChatArrayNicoJKFormat(io, arr)
-	io.puts "<!-- Fetched logfile from #{Time.at(arr.first.attribute('date').to_s.to_i).strftime('%FT%T')} -->" unless arr.empty?
+	if OPT[:t] && !arr.empty?
+		ts = Time.at(arr.first.attribute('date').to_s.to_i).strftime('%FT%T%z'); ts[ts.size-2, 0] = ?:
+		io.puts "<!-- Fetched logfile from #{ts} -->"
+	end
 	
 	f = MyFormatter.new
 	arr.each do |c|
@@ -345,7 +362,6 @@ def printChatArrayXML(io, arr)
 end
 
 def printChatArrayJikkyoRec(io, arr)
-	# ここでARGVを使うのは行儀がよくないかな
 	io.puts %Q(<JikkyoRec startTime="#{getTimeFromARGV(ARGV[1]).to_i}000" channel="#{ARGV[0]}" />)
 	io.puts
 	
@@ -388,6 +404,7 @@ def showhelp(io = $stdout)
 	io.puts '  -f [filename]  --file [filename]    出力するファイル名を指定します'
 	io.puts '  -x  --xml                           出力フォーマットをXMLにします'
 	io.puts '  -j  --jkl                           出力フォーマットをJikkyoRec互換っぽくします'
+	io.puts '  -t  --time-header                   NicoJKフォーマットの一番初めに時刻ヘッダを追加します'
 	io.puts '  -b path  --base-path path           ファイル出力のフォルダを指定します'
 	io.puts '  -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します'
 	io.puts '  -c  --check-file                    取得時間範囲がよく似たファイルが存在する場合ダウンロードしなくなります'
@@ -409,6 +426,7 @@ opt.set_options(
 	['-f',	'--file',			GetoptLong::OPTIONAL_ARGUMENT],
 	['-x',	'--xml',			GetoptLong::NO_ARGUMENT],
 	['-j',	'--jkl',			GetoptLong::NO_ARGUMENT],
+	['-t',	'--time-header',	GetoptLong::NO_ARGUMENT],
 	['-b',	'--base-path',		GetoptLong::REQUIRED_ARGUMENT],
 	['-d',	'--directory',		GetoptLong::NO_ARGUMENT],
 	['-c',	'--check-file',		GetoptLong::NO_ARGUMENT],
