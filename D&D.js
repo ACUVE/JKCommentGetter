@@ -1,21 +1,24 @@
 // TSファイルを他のスクリプトとか実行ファイルに丸投げしてニコニコ動画のコメントを自動ダウンロード出来るかもしれないようにするスクリプト
 // License: WTFPL <http://www.wtfpl.net/txt/copying/>
 
-// ☆つかいかた
-// 　1. tsrenamec をおなじフォルダにおく（http://toro.2ch.net/test/read.cgi/avi/1330008877/626）>>626氏 及び 原作者 に感謝
-// 　2. http://toro.2ch.net/test/read.cgi/avi/1330008877/ あたりからダウンロードするスクリプトをおとしておなじフォルダにおく
-// 　3. このスクリプトのアイコンにファイルをドラッグアンドドロップする
-// 　4. ダウンロードできるかもしれない
-// ※-bをつけないとき、スクリプトのあるフォルダにアウトプットファイルができます
-// ※-fをつけないとなぜかとまります
-// ☆せってい
-// 　ダウンロードするためスクリプトのファイルめい
+// ☆使い方
+// 　0. JKCommentGetter.rbと同じフォルダにこのファイルを置き、JKCommentGetter.rbの設定を済ませる
+// 　1. tsrenamec を同じフォルダに置く（http://toro.2ch.net/test/read.cgi/avi/1330008877/626）>>626氏 及び 原作者 に感謝
+// 　2. このスクリプトのアイコンにファイルをドラッグアンドドロップする
+// 　3. ダウンロード出来るかもしれない
+// ※パラメーターに-bをつけないとき、スクリプトのあるフォルダに出力されます
+// ※-fをつけないと何故か（自分の環境では）止まります
+
+// ☆設定
+// 　ダウンロードするためスクリプトのファイル名
 var DOWNLOADSCRIPT = 'JKCommentGetter.rb';
-// 　TsRenamec のファイルめい
+// 　TsRenamec のファイル名
 var TSRENAMEC = 'tsrenemec.exe';
-// 　ダウンロードするためのスクリプトにわたすパラメータ
-var DOWNLOADSCRIPTARG = '-f -d'
-// 　tsrenameがだすチャンネルめいとjkとのたいおうひょう
+// 　ダウンロードするためのスクリプトに渡すパラメータ
+var DOWNLOADSCRIPTARG = '-f -d';
+// 　Rubyを起動するコマンド
+var RUBYCOMMAND = 'ruby';
+// 　tsrenameが出力するチャンネル名とjk*との対応表
 function ChToJk(ch){
 	return {
 		'ＮＨＫ総合・東京': 'jk1',
@@ -70,8 +73,9 @@ function main(path){
 			if(jknum){
 				logging('　コメントダウンロードを開始')
 				// -b を付けているが、複数指定された場合一番最後のものが利用されるのでDOWNLOADSCRIPTARGの指定は無駄にはならない
-				var exe2 = shell.Exec('ruby "' + PATH + '\\' + DOWNLOADSCRIPT + '" ' + jknum + ' ' + start_time + ' ' + end_time + ' -b "' + PATH + '" ' + DOWNLOADSCRIPTARG);
+				var exe2 = shell.Exec(RUBYCOMMAND + ' "' + PATH + '\\' + DOWNLOADSCRIPT + '" ' + jknum + ' ' + start_time + ' ' + end_time + ' -b "' + PATH + '" ' + DOWNLOADSCRIPTARG);
 				while(exe2.Status != 1){
+					// 無意味に読み飛ばす
 					while(!exe2.StdErr.AtEndOfLine){exe2.StdErr.ReadLine();}
 					while(!exe2.StdOut.AtEndOfLine){exe2.StdOut.ReadLine();}
 					WScript.Sleep(100);
