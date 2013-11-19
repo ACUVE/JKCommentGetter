@@ -46,10 +46,11 @@ class CommentGetter
 public
 	# jknum: 'jk1'など
 	# cookie: クッキー美味しい
-	def initialize(jknum, cookie, retrynum)
+	def initialize(jknum, cookie, retrynum, args = {})
 		@jknum = jknum
 		@cookie = cookie
 		@retrynum = retrynum
+		@logging = args[:logging]
 	end
 	
 	# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
@@ -143,7 +144,10 @@ private
 			res = http.request(req)
 			return nil if res.code != '200'
 			flv = htmlform2hash(res.body.force_encoding('UTF-8'))
-			return nil if flv['error']
+			if flv['error']
+				logging __method__.to_s, ' error! error=', flv['error'], ?\n
+				return nil
+			end
 			flv
 		end
 	end
@@ -195,10 +199,13 @@ private
 	def htmlform2hash(str)
 		Hash[*str.split(?&).map{|v| v.split(?=, 2)}.map{|a, b| [a, URI.decode_www_form_component(b)]}.flatten(1)]
 	end
+	def logging(*str)
+		@logging.call(*str) if @logging
+	end
 end
 
 # pasted from rexml/formatters/default.rb
-class MyFormatter < REXML::Formatters::Default
+class ChatFormatter < REXML::Formatters::Default
 	FrontAttributes = %w(thread no vpos date mail yourpost user_id premium anonymity)
 	
 	def write_element(node, output)
@@ -236,7 +243,7 @@ def printChatArrayNicoJKFormat(io, arr)
 		io.puts "<!-- Fetched logfile from #{ts} -->"
 	end
 	
-	f = MyFormatter.new
+	f = ChatFormatter.new
 	arr.each do |c|
 		f.write(c, s = '')
 		io.puts s.gsub(/[\r\n]/, {"\r" => '&#13;', "\n" => '&#10;'})
@@ -249,7 +256,7 @@ def printChatArrayXML(io, arr)
 <packet>
 	EOS
 	
-	f = MyFormatter.new
+	f = ChatFormatter.new
 	arr.each do |c|
 		f.write(c, s = '')
 		io.print '  ', s, ?\n
@@ -262,7 +269,7 @@ def printChatArrayJikkyoRec(io, arr)
 	io.puts %Q(<JikkyoRec startTime="#{getTimeFromARGV(ARGV[1]).to_i}000" channel="#{ARGV[0]}" />)
 	io.puts
 	
-	f = MyFormatter.new
+	f = ChatFormatter.new
 	arr.each do |c|
 		f.write(c, s = '')
 		io.puts s
@@ -293,24 +300,26 @@ def errorexit(str)
 end
 
 def showhelp(io = $stdout)
-	io.puts "Usage: ruby #{$0} チャンネル 取得時間範囲のはじめ 取得時間範囲のおわり [option...]"
-	io.puts 'Options:'
-	io.puts '  -m sec  --margin sec                取得時間範囲の前後を指定秒だけ広げます'
-	io.puts '  -s sec  --start-margin sec          取得時間範囲のはじめを指定秒だけ早くします'
-	io.puts '  -e sec  --end-margin sec            取得時間範囲のおわりを指定秒だけ遅くします'
-	io.puts '  -f [filename]  --file [filename]    出力するファイル名を指定します'
-	io.puts '  -x  --xml                           出力フォーマットをXMLにします'
-	io.puts '  -j  --jkl                           出力フォーマットをJikkyoRec互換っぽくします'
-	io.puts '  -t  --time-header                   NicoJKフォーマットの一番初めに時刻ヘッダを追加します'
-	io.puts '  -b path  --base-path path           ファイル出力のフォルダを指定します'
-	io.puts '  -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します'
-	io.puts '  -c  --check-file                    取得時間範囲がよく似たファイルが存在する場合ダウンロードしなくなります'
-	io.puts '  -a sec  --check-range sec           よく似たファイルと判定する時間範囲を設定します'
-	io.puts '  -r num  --retry num                 取得エラーが発生した際に再取得へ行く回数'
-	io.puts '  -i cookie  --cookie cookie          Cookieとして利用する文字列を与えます'
-	io.puts '  -h  --help                          このヘルプを表示し終了します'
-	io.puts
-	io.puts '    詳細は README.txt をご覧ください'
+	io.puts <<-EOS
+Usage: ruby #{$0} チャンネル 取得時間範囲のはじめ 取得時間範囲のおわり [option...]
+Options:
+  -m sec  --margin sec                取得時間範囲の前後を指定秒だけ広げます
+  -s sec  --start-margin sec          取得時間範囲のはじめを指定秒だけ早くします
+  -e sec  --end-margin sec            取得時間範囲のおわりを指定秒だけ遅くします
+  -f [filename]  --file [filename]    出力するファイル名を指定します
+  -x  --xml                           出力フォーマットをXMLにします
+  -j  --jkl                           出力フォーマットをJikkyoRec互換っぽくします
+  -t  --time-header                   NicoJKフォーマットの一番初めに時刻ヘッダを追加します
+  -b path  --base-path path           ファイル出力のフォルダを指定します
+  -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します
+  -c  --check-file                    取得時間範囲がよく似たファイルが存在する場合ダウンロードしなくなります
+  -a sec  --check-range sec           よく似たファイルと判定する時間範囲を設定します
+  -r num  --retry num                 取得エラーが発生した際に再取得へ行く回数
+  -i cookie  --cookie cookie          Cookieとして利用する文字列を与えます
+  -h  --help                          このヘルプを表示し終了します
+
+    詳細は README.txt をご覧ください
+	EOS
 end
 
 
@@ -384,7 +393,7 @@ end
 
 logging jknum, ' を ', start_time, ' から ', end_time, 'まで取得します', ?\n
 # コメント取得処理
-cm = CommentGetter.new(jknum, cookie, retrynum)
+cm = CommentGetter.new(jknum, cookie, retrynum, logging: method(:logging))
 chat = cm.getChatElementsRange(start_time, end_time)
 
 if chat.empty?	# 一つもコメントが得られなかった
