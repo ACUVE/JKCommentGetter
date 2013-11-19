@@ -13,8 +13,6 @@
 #
 #    Please see <http://www.gnu.org/licenses/>.
 
-require 'net/http'
-require 'rexml/document'
 require 'getoptlong'
 require_relative 'JKComment'
 
@@ -158,8 +156,8 @@ end
 
 logging jknum, ' を ', start_time, ' から ', end_time, 'まで取得します', ?\n
 # コメント取得処理
-cm = CommentGetter.new(jknum, cookie, retrynum, logging: method(:logging))
-chat = cm.getChatElementsRange(start_time, end_time)
+cm = CommentGetter.new(cookie, retrynum, logging: method(:logging))
+chat = cm.getChatElementsRange(jknum, start_time, end_time)
 
 if chat.empty?	# 一つもコメントが得られなかった
 	$stderr.puts 'コメントが一つも得られませんでした。エラーだと考えられます。'

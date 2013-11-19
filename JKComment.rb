@@ -13,48 +13,76 @@
 #
 #    Please see <http://www.gnu.org/licenses/>.
 
+require 'net/http'
+require 'rexml/document'
+
 module JKComment
+	# ニコニコ実況からコメントをダウンロードするクラス
 	class CommentGetter
 		JkServer = 'jk.nicovideo.jp'
 		private_constant :JkServer
 		
+		attr_reader :state
+		
+		module Constants
+			NOTWORKING = 0
+			WORKING = 1
+		end
+		include Constants
+		
 	public
-		# jknum: 'jk1'など
 		# cookie: クッキー美味しい
-		def initialize(jknum, cookie, retrynum, args = {})
-			@jknum = jknum
+		# retrynum: 処理を失敗した際にリトライする最大回数
+		# args: その他の引数
+		def initialize(cookie, retrynum = 3, args = {})
 			@cookie = cookie
 			@retrynum = retrynum
 			@logging = args[:logging]
+			
+			@state = NOTWORKING
+			@crr_time = nil
 		end
 		
 		# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
 		# end_time: 取得範囲のおわり、Unix時またはTimeクラス
-		def getChatElementsRange(start_time, end_time)
-			carr = []
-			crr_time = end_time
-			while 1
-				break if start_time.to_i > crr_time.to_i
-				for i in 0..@retrynum
-					if i != 0
-						logging 'flv情報が取得出来なかったため再取得します', ?\n
-						sleep 1
+		def getChatElementsRange(jknum, start_time, end_time)
+			raise RuntimeError, 'Already started' if @state == WORKING
+			
+			@state = WORKING
+			@crr_time = Time.at(end_time.to_i)
+			begin
+				carr = []
+				crr_time = end_time
+				while 1
+					break if start_time.to_i > crr_time.to_i
+					for i in 0..@retrynum
+						if i != 0
+							logging 'flv情報が取得出来なかったため再取得します', ?\n
+							sleep 1
+						end
+						
+						flv = getFlvInfo(jknum, crr_time, crr_time)
+						break if flv
 					end
+					raise RuntimeError, 'Could not get flv information.' if flv == nil
 					
-					flv = getFlvInfo(crr_time, crr_time)
-					break if flv
+					logging 'スレッド', flv['thread_id'], 'から読み込み開始: start_time=', Time.at(flv['start_time'].to_i), ', end_time=', Time.at(flv['end_time'].to_i), ?\n
+					arr = getThreadComment(start_time, end_time, flv['ms'], flv['http_port'], flv['thread_id'], flv['user_id'])
+					raise RuntimeError, 'Could not get thread comments.' if arr == nil
+					logging 'スレッド', flv['thread_id'], 'から読み取り完了: size=', arr.size, ?\n
+					
+					carr = arr + carr
+					crr_time = flv['start_time'].to_i - 1
 				end
-				raise RuntimeError, 'Could not get flv information.' if flv == nil
-				
-				logging 'スレッド', flv['thread_id'], 'から読み込み開始: start_time=', Time.at(flv['start_time'].to_i), ', end_time=', Time.at(flv['end_time'].to_i), ?\n
-				arr = getThreadComment(start_time, end_time, flv['ms'], flv['http_port'], flv['thread_id'], flv['user_id'])
-				raise RuntimeError, 'Could not get thread comments.' if arr == nil
-				logging 'スレッド', flv['thread_id'], 'から読み取り完了: size=', arr.size, ?\n
-				
-				carr = arr + carr
-				crr_time = flv['start_time'].to_i - 1
+			ensure
+				@state = NOTWORKING
 			end
+			
 			carr
+		end
+		# どこまで取得したかを返すメソッド
+		def currentGetTime
+			@crr_time
 		end
 		
 	private
@@ -104,17 +132,17 @@ module JKComment
 				carr = addarr + carr
 				logging 'スレッド', thread_id, 'から', carr.size, 'コメント読み込んだ: ', Time.at(carr.first.attribute('date').to_s.to_i), ?\n
 				break if arr.size < 1000
-				crr_time = carr.first.attribute('date').to_s.to_i	# 1秒間に1000コメント以上されている場合に無限ループする
-																	# そのような場合はres_fromを指定すべきなのであろうが、まずありえないの実装しない
+				crr_time = carr.first.attribute('date').to_s.to_i	# 1秒間に1000コメント以上されている場合に先のコメントが取得できない問題があるが気にしない
+				@crr_time = Time.at(crr_time)
 				sleep 1
 			end
 			index = carr.index{|chat| chat.attribute('date').to_s.to_i >= start_time.to_i}
 			if index then carr[index...carr.size] else [] end
 		end
 		# start_time, end_time: Unix時のIntでもよし、Timeクラスでもよし
-		def getFlvInfo(start_time, end_time)
+		def getFlvInfo(jknum, start_time, end_time)
 			Net::HTTP.start(JkServer) do |http|
-				req = Net::HTTP::Get.new("/api/v2/getflv?v=#{@jknum}&start_time=#{start_time.to_i}&end_time=#{end_time.to_i}")
+				req = Net::HTTP::Get.new("/api/v2/getflv?v=#{jknum}&start_time=#{start_time.to_i}&end_time=#{end_time.to_i}")
 				req.add_field('Cookie', @cookie)
 				res = http.request(req)
 				return nil if res.code != '200'
