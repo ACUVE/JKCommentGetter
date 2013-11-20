@@ -1,4 +1,4 @@
-# JKCommentGetter Ver.1.7.2
+# JKCommentGetter Ver.1.8
 
 # License: GPLv3 or later
 #    This program is free software: you can redistribute it and/or modify
