@@ -43,9 +43,21 @@ module JKComment
 			@crr_time = nil
 		end
 		
+		# 指定期間のコメントのChatElementsを取得する。時間によりソート済みである。
 		# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
 		# end_time: 取得範囲のおわり、Unix時またはTimeクラス
 		def getChatElementsRange(jknum, start_time, end_time)
+			arr = getChatElementsThreadRange(jknum, start_time, end_time)
+			
+			carr = []
+			arr.each {|data| carr.concat(data[:chat])}
+			carr.sort_by{|c| [c.attribute('date').to_s.to_i, c.attribute('thread').to_s.to_i, c.attribute('no').to_s.to_i]}
+		end
+		
+		# 指定期間のコメントのChatElementsとFlv情報をスレッドごとに取得する。
+		# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
+		# end_time: 取得範囲のおわり、Unix時またはTimeクラス
+		def getChatElementsThreadRange(jknum, start_time, end_time)
 			raise RuntimeError, 'Already started' if @state == WORKING
 			
 			@state = WORKING
@@ -54,7 +66,6 @@ module JKComment
 				carr = []
 				crr_time = end_time
 				while 1
-					break if start_time.to_i > crr_time.to_i
 					for i in 0..@retrynum
 						if i != 0
 							logging 'flv情報が取得出来なかったため再取得します', ?\n
@@ -62,24 +73,31 @@ module JKComment
 						end
 						
 						flv = getFlvInfo(jknum, crr_time, crr_time)
+						
 						break if flv
 					end
 					raise RuntimeError, 'Could not get flv information.' if flv == nil
+					
+					break if start_time.to_i > flv['end_time'].to_i
 					
 					logging 'スレッド', flv['thread_id'], 'から読み込み開始: start_time=', Time.at(flv['start_time'].to_i), ', end_time=', Time.at(flv['end_time'].to_i), ?\n
 					arr = getThreadComment(start_time, end_time, flv['ms'], flv['http_port'], flv['thread_id'], flv['user_id'])
 					raise RuntimeError, 'Could not get thread comments.' if arr == nil
 					logging 'スレッド', flv['thread_id'], 'から読み取り完了: size=', arr.size, ?\n
 					
-					carr = arr + carr
+					carr << {
+						flv: flv,
+						chat: arr
+					} unless arr.empty?
 					crr_time = flv['start_time'].to_i - 1
 				end
 			ensure
 				@state = NOTWORKING
 			end
 			
-			carr
+			carr.reverse	# 時間的に後ろのものから取得しているので反転
 		end
+		
 		# どこまで取得したかを返すメソッド
 		def currentGetTime
 			@crr_time
@@ -130,7 +148,11 @@ module JKComment
 					addarr = arr
 				end
 				carr = addarr + carr
-				logging 'スレッド', thread_id, 'から', carr.size, 'コメント読み込んだ: ', Time.at(carr.first.attribute('date').to_s.to_i), ?\n
+				if carr.first
+					logging 'スレッド', thread_id, 'から', carr.size, 'コメント読み込んだ: ', Time.at(carr.first.attribute('date').to_s.to_i), ?\n
+				else
+					logging 'スレッド', thread_id, 'から0コメント読み込んだ', ?\n
+				end
 				break if arr.size < 1000
 				crr_time = carr.first.attribute('date').to_s.to_i	# 1秒間に1000コメント以上されている場合に先のコメントが取得できない問題があるが気にしない
 				@crr_time = Time.at(crr_time)
