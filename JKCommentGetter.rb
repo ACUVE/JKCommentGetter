@@ -206,7 +206,7 @@ end
 if OPT[:x]
 	printChatArrayXML(outfile, chat)
 elsif OPT[:j]
-	printChatArrayJikkyoRec(outfile, chat)
+	printChatArrayJikkyoRec(outfile, chat, jknum, start_time)
 else
 	printChatArrayNicoJKFormat(outfile, chat)
 end

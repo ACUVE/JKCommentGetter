@@ -292,8 +292,8 @@ module JKComment
 	end
 	module_function :printChatArrayXML
 
-	def printChatArrayJikkyoRec(io, arr)
-		io.puts %Q(<JikkyoRec startTime="#{getTimeFromARGV(ARGV[1]).to_i}000" channel="#{ARGV[0]}" />)
+	def printChatArrayJikkyoRec(io, arr, jknum, start_time)
+		io.puts %Q(<JikkyoRec startTime="#{start_time.to_i}000" channel="#{jknum}" />)
 		io.puts
 		
 		f = ChatFormatter.new
