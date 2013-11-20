@@ -48,11 +48,26 @@ def getTimeFromARGV(str)
 	end
 end
 
+def getStartTimeAndEndTime
+	start_time = getTimeFromARGV(ARGV[1]); end_time = getTimeFromARGV(ARGV[2])
+	if start_time && !end_time && prelativetime?(ARGV[2])
+		end_time = start_time + parse_prelativetime(ARGV[2])
+	end
+	[start_time, end_time]
+end
+
 def numonly?(str)
 	str.match(/^\d+$/) != nil
 end
 def pmnumonly?(str)
 	str.match(/^[+-]?\d+$/) != nil
+end
+def prelativetime?(str)
+	str.match(/^\+?\d+[smhd]$/i) != nil
+end
+def parse_prelativetime(str)
+	rel = str.to_i
+	rel * {?s => 1, ?m => 60, ?h => 60 * 60, ?d => 60 * 60 * 24}[str[-1].downcase]
 end
 
 def errorexit(str)
@@ -122,8 +137,7 @@ errorexit('Cookieが設定されていません 設定を行なってくださ�
 cookie = cookie.strip
 
 jknum = ARGV[0]
-start_time = getTimeFromARGV(ARGV[1])
-end_time = getTimeFromARGV(ARGV[2])
+start_time, end_time = getStartTimeAndEndTime
 errorexit('取得時間範囲のはじめがおかしいです') if start_time == nil
 errorexit('取得時間範囲のおわりがおかしいです') if end_time == nil
 
