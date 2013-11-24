@@ -47,11 +47,31 @@ module JKComment
 		# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
 		# end_time: 取得範囲のおわり、Unix時またはTimeクラス
 		def getChatElementsRange(jknum, start_time, end_time)
-			arr = getChatElementsThreadRange(jknum, start_time, end_time)
+			et = getChatElementsThreadRange(jknum, start_time, end_time)
 			
 			carr = []
-			arr.each {|data| carr.concat(data[:chat])}
-			carr.sort_by{|c| [c.attribute('date').to_s.to_i, c.attribute('thread').to_s.to_i, c.attribute('no').to_s.to_i]}
+			et.each do |obj|
+				arr = obj[:chat]
+				unless arr.empty?
+					if carr.empty?
+						carr.concat(arr)
+					else
+						firstdate = arr.first.attribute('date').to_s.to_i
+						index = (carr.rindex{|o| o.attribute('date').to_s.to_i <= firstdate} || -1) + 1
+						if index == carr.size
+							carr.concat(arr)
+						else
+							lastdate = carr.last.attribute('date').to_s.to_i
+							index2 = (arr.index{|o| lastdate <= o.attribute('date').to_s.to_i}) || arr.size
+							s = arr.slice!(0...index2)
+							c = carr.slice!(index...carr.size).concat(s).sort_by!{|c| [c.attribute('date').to_s.to_i, c.attribute('thread').to_s.to_i, c.attribute('no').to_s.to_i]}
+							carr.concat(c).concat(arr)
+						end
+					end
+				end
+			end
+			
+			carr
 		end
 		
 		# 指定期間のコメントのChatElementsとFlv情報をスレッドごとに取得する。
