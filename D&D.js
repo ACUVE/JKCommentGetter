@@ -16,6 +16,8 @@ var DOWNLOADSCRIPT = 'JKCommentGetter.rb';
 var TSRENAMEC = 'tsrenemec.exe';
 // 　ダウンロードするためのスクリプトに渡すパラメータ
 var DOWNLOADSCRIPTARG = '-f -d';
+// 　ログファイルのコメントにダウンロード元のファイル名を書き込むか否か
+var COMMENTFILENAME = true;
 // 　Rubyを起動するコマンド
 var RUBYCOMMAND = 'ruby';
 // 　tsrenameが出力するチャンネル名とjk*との対応表
@@ -73,7 +75,7 @@ function main(path){
 			if(jknum){
 				logging('　コメントダウンロードを開始')
 				// -b を付けているが、複数指定された場合一番最後のものが利用されるのでDOWNLOADSCRIPTARGの指定は無駄にはならない
-				var exe2 = shell.Exec(RUBYCOMMAND + ' "' + PATH + '\\' + DOWNLOADSCRIPT + '" ' + jknum + ' ' + start_time + ' ' + end_time + ' -b "' + PATH + '" ' + DOWNLOADSCRIPTARG);
+				var exe2 = shell.Exec(RUBYCOMMAND + ' "' + PATH + '\\' + DOWNLOADSCRIPT + '" ' + jknum + ' ' + start_time + ' ' + end_time + ' -b "' + PATH + '"' + (COMMENTFILENAME ? ' -o "' + path + '"' : '') + ' ' + DOWNLOADSCRIPTARG);
 				while(exe2.Status != 1){
 					// 無意味に読み飛ばす
 					while(!exe2.StdErr.AtEndOfLine){exe2.StdErr.ReadLine();}

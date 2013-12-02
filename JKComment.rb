@@ -47,18 +47,38 @@ module JKComment
 		# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
 		# end_time: 取得範囲のおわり、Unix時またはTimeクラス
 		def getChatElementsRange(jknum, start_time, end_time)
-			arr = getChatElementsThreadRange(jknum, start_time, end_time)
+			et = getChatElementsThreadRange(jknum, start_time, end_time)
 			
 			carr = []
-			arr.each {|data| carr.concat(data[:chat])}
-			carr.sort_by{|c| [c.attribute('date').to_s.to_i, c.attribute('thread').to_s.to_i, c.attribute('no').to_s.to_i]}
+			et.each do |obj|
+				arr = obj[:chat]
+				unless arr.empty?
+					if carr.empty?
+						carr.concat(arr)
+					else
+						firstdate = arr.first.attribute('date').to_s.to_i
+						index = (carr.rindex{|o| o.attribute('date').to_s.to_i <= firstdate} || -1) + 1
+						if index == carr.size
+							carr.concat(arr)
+						else
+							lastdate = carr.last.attribute('date').to_s.to_i
+							index2 = (arr.index{|o| lastdate <= o.attribute('date').to_s.to_i}) || arr.size
+							s = arr.slice!(0...index2)
+							c = carr.slice!(index...carr.size).concat(s).sort_by!{|c| [c.attribute('date').to_s.to_i, c.attribute('thread').to_s.to_i, c.attribute('no').to_s.to_i]}
+							carr.concat(c).concat(arr)
+						end
+					end
+				end
+			end
+			
+			carr
 		end
 		
 		# 指定期間のコメントのChatElementsとFlv情報をスレッドごとに取得する。
 		# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
 		# end_time: 取得範囲のおわり、Unix時またはTimeクラス
 		def getChatElementsThreadRange(jknum, start_time, end_time)
-			raise RuntimeError, 'Already started' if @state == WORKING
+			raise RuntimeError, 'Already started.' if @state == WORKING
 			
 			@state = WORKING
 			@crr_time = Time.at(end_time.to_i)
@@ -262,11 +282,14 @@ module JKComment
 		end
 	end
 
-	def printChatArrayNicoJKFormat(io, arr)
-		if OPT[:t] && !arr.empty?
-			ts = Time.at(arr.first.attribute('date').to_s.to_i).strftime('%FT%T%z'); ts[ts.size-2, 0] = ?:
+	def printChatArrayNicoJKFormat(io, arr, arg = {})
+		if arg[:time_header] && !arr.empty?
+			raise RuntimeError, 'Need arg[:start_time].' unless arg[:start_time]
+			
+			ts = Time.at(arg[:start_time].to_i).strftime('%FT%T%z'); ts[ts.size-2, 0] = ?:
 			io.puts "<!-- Fetched logfile from #{ts} -->"
 		end
+		io.puts "<!-- #{arg[:comment].encode('UTF-8')} -->" if arg[:comment]
 		
 		f = ChatFormatter.new
 		arr.each do |c|
@@ -276,11 +299,10 @@ module JKComment
 	end
 	module_function :printChatArrayNicoJKFormat
 	
-	def printChatArrayXML(io, arr)
-		io.puts <<-'EOS'
-	<?xml version="1.0" encoding="UTF-8"?>
-	<packet>
-		EOS
+	def printChatArrayXML(io, arr, arg = {})
+		io.puts %q(<?xml version="1.0" encoding="UTF-8"?>)
+		io.puts "<!-- #{arg[:comment].encode('UTF-8')} -->" if arg[:comment]
+		io.puts '<packet>'
 		
 		f = ChatFormatter.new
 		arr.each do |c|
@@ -292,8 +314,11 @@ module JKComment
 	end
 	module_function :printChatArrayXML
 
-	def printChatArrayJikkyoRec(io, arr, jknum, start_time)
-		io.puts %Q(<JikkyoRec startTime="#{start_time.to_i}000" channel="#{jknum}" />)
+	def printChatArrayJikkyoRec(io, arr, arg = {})
+		raise RuntimeError, 'Need arg[:argv_start_time] and arg[:jknum].' unless arg[:argv_start_time] && arg[:jknum]
+		
+		io.puts %Q(<JikkyoRec startTime="#{arg[:argv_start_time].to_i}000" channel="#{arg[:jknum]}" />)
+		io.puts "<!-- #{arg[:comment].encode('UTF-8')} -->" if arg[:comment]
 		io.puts
 		
 		f = ChatFormatter.new
