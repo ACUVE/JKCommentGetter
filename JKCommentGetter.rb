@@ -88,6 +88,7 @@ Options:
   -x  --xml                           出力フォーマットをXMLにします
   -j  --jkl                           出力フォーマットをJikkyoRec互換っぽくします
   -t  --time-header                   NicoJKフォーマットの一番初めに時刻ヘッダを追加します
+  -o comment  --comment commment      ファイルの頭の辺りに指定したコメントを追加します
   -b path  --base-path path           ファイル出力のフォルダを指定します
   -d  --directory                     チャンネルと同じ名前のフォルダの中にファイルを出力します
   -c  --check-file                    取得時間範囲がよく似たファイルが存在する場合ダウンロードしなくなります
@@ -111,6 +112,7 @@ opt.set_options(
 	['-x',	'--xml',			GetoptLong::NO_ARGUMENT],
 	['-j',	'--jkl',			GetoptLong::NO_ARGUMENT],
 	['-t',	'--time-header',	GetoptLong::NO_ARGUMENT],
+	['-o',	'--comment',		GetoptLong::REQUIRED_ARGUMENT],
 	['-b',	'--base-path',		GetoptLong::REQUIRED_ARGUMENT],
 	['-d',	'--directory',		GetoptLong::NO_ARGUMENT],
 	['-c',	'--check-file',		GetoptLong::NO_ARGUMENT],
@@ -141,6 +143,7 @@ start_time, end_time = getStartTimeAndEndTime
 errorexit('取得時間範囲のはじめがおかしいです') if start_time == nil
 errorexit('取得時間範囲のおわりがおかしいです') if end_time == nil
 
+argv_start_time = start_time; argv_end_time = end_time
 start_time -= if OPT[:s] then OPT[:s].to_i elsif OPT[:m] then OPT[:m].to_i else 0 end
 end_time += if OPT[:e] then OPT[:e].to_i elsif OPT[:m] then OPT[:m].to_i else 0 end
 retrynum = if OPT[:r] then OPT[:r].to_i else 3 end
@@ -203,12 +206,22 @@ if OPT[:f]
 	fileopen = true
 end
 
+arg = {
+	jknum: jknum,
+	start_time: start_time,
+	end_time: end_time,
+	argv_start_time: argv_start_time,
+	argv_end_time: argv_end_time,
+	time_header: !!OPT[:t],
+	comment: OPT[:o]
+}
+
 if OPT[:x]
-	printChatArrayXML(outfile, chat)
+	printChatArrayXML(outfile, chat, arg)
 elsif OPT[:j]
-	printChatArrayJikkyoRec(outfile, chat, jknum, start_time)
+	printChatArrayJikkyoRec(outfile, chat, arg)
 else
-	printChatArrayNicoJKFormat(outfile, chat)
+	printChatArrayNicoJKFormat(outfile, chat, arg)
 end
 
 if fileopen
