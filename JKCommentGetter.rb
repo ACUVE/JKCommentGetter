@@ -95,6 +95,7 @@ Options:
   -a sec  --check-range sec           よく似たファイルと判定する時間範囲を設定します
   -r num  --retry num                 取得エラーが発生した際に再取得へ行く回数
   -i cookie  --cookie cookie          Cookieとして利用する文字列を与えます
+  -p  --perfect                       完全なコメントが取得できたと保証できない時にエラーで落ちるようにします
   -h  --help                          このヘルプを表示し終了します
 
     詳細は README.txt をご覧ください
@@ -105,6 +106,7 @@ end
 # オプションのパース
 opt = GetoptLong.new
 opt.set_options(
+	# gklnqsuvwyz
 	['-m',	'--margin',			GetoptLong::REQUIRED_ARGUMENT],
 	['-s',	'--start-margin',	GetoptLong::REQUIRED_ARGUMENT],
 	['-e',	'--end-margin',		GetoptLong::REQUIRED_ARGUMENT],
@@ -119,6 +121,7 @@ opt.set_options(
 	['-a',	'--check-range',	GetoptLong::REQUIRED_ARGUMENT],
 	['-r',	'--retry',			GetoptLong::REQUIRED_ARGUMENT],
 	['-i',	'--cookie',			GetoptLong::REQUIRED_ARGUMENT],
+	['-p',	'--perfect',		GetoptLong::NO_ARGUMENT],
 	['-h',	'--help',			GetoptLong::NO_ARGUMENT]
 )
 
@@ -174,7 +177,7 @@ end
 logging jknum, ' を ', start_time, ' から ', end_time, 'まで取得します', ?\n
 # コメント取得処理
 cm = CommentGetter.new(cookie, retrynum, logging: method(:logging))
-chat = cm.getChatElementsRange(jknum, start_time, end_time)
+chat = cm.getChatElementsRange(jknum, start_time, end_time, !!OPT[:p])
 
 if chat.empty?	# 一つもコメントが得られなかった
 	$stderr.puts 'コメントが一つも得られませんでした。エラーだと考えられます。'
