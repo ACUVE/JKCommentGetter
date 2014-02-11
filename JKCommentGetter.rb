@@ -98,7 +98,7 @@ Options:
   -p  --perfect                       完全なコメントが取得できたと保証できない時にエラーで落ちるようにします
   -h  --help                          このヘルプを表示し終了します
 
-    詳細は README.txt をご覧ください
+    詳細は README.md をご覧ください
 	EOS
 end
 
