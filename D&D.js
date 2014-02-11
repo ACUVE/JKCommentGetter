@@ -15,7 +15,7 @@ var DOWNLOADSCRIPT = 'JKCommentGetter.rb';
 // 　TsRenamec のファイル名
 var TSRENAMEC = 'tsrenemec.exe';
 // 　ダウンロードするためのスクリプトに渡すパラメータ
-var DOWNLOADSCRIPTARG = '-f -d';
+var DOWNLOADSCRIPTARG = '-f -d -w';
 // 　ログファイルのコメントにダウンロード元のファイル名を書き込むか否か
 var COMMENTFILENAME = true;
 // 　Rubyを起動するコマンド

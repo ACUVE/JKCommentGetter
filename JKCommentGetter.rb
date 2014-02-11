@@ -96,6 +96,7 @@ Options:
   -r num  --retry num                 取得エラーが発生した際に再取得へ行く回数
   -i cookie  --cookie cookie          Cookieとして利用する文字列を与えます
   -p  --perfect                       完全なコメントが取得できたと保証できない時にエラーで落ちるようにします
+  -w  --working-directory             カレントディレクトリをスクリプトがあるフォルダにします
   -h  --help                          このヘルプを表示し終了します
 
     詳細は README.md をご覧ください
@@ -107,27 +108,31 @@ end
 opt = GetoptLong.new
 opt.set_options(
 	# gklnqsuvwyz
-	['-m',	'--margin',			GetoptLong::REQUIRED_ARGUMENT],
-	['-s',	'--start-margin',	GetoptLong::REQUIRED_ARGUMENT],
-	['-e',	'--end-margin',		GetoptLong::REQUIRED_ARGUMENT],
-	['-f',	'--file',			GetoptLong::OPTIONAL_ARGUMENT],
-	['-x',	'--xml',			GetoptLong::NO_ARGUMENT],
-	['-j',	'--jkl',			GetoptLong::NO_ARGUMENT],
-	['-t',	'--time-header',	GetoptLong::NO_ARGUMENT],
-	['-o',	'--comment',		GetoptLong::REQUIRED_ARGUMENT],
-	['-b',	'--base-path',		GetoptLong::REQUIRED_ARGUMENT],
-	['-d',	'--directory',		GetoptLong::NO_ARGUMENT],
-	['-c',	'--check-file',		GetoptLong::NO_ARGUMENT],
-	['-a',	'--check-range',	GetoptLong::REQUIRED_ARGUMENT],
-	['-r',	'--retry',			GetoptLong::REQUIRED_ARGUMENT],
-	['-i',	'--cookie',			GetoptLong::REQUIRED_ARGUMENT],
-	['-p',	'--perfect',		GetoptLong::NO_ARGUMENT],
-	['-h',	'--help',			GetoptLong::NO_ARGUMENT]
+	['-m',	'--margin',				GetoptLong::REQUIRED_ARGUMENT],
+	['-s',	'--start-margin',		GetoptLong::REQUIRED_ARGUMENT],
+	['-e',	'--end-margin',			GetoptLong::REQUIRED_ARGUMENT],
+	['-f',	'--file',				GetoptLong::OPTIONAL_ARGUMENT],
+	['-x',	'--xml',				GetoptLong::NO_ARGUMENT],
+	['-j',	'--jkl',				GetoptLong::NO_ARGUMENT],
+	['-t',	'--time-header',		GetoptLong::NO_ARGUMENT],
+	['-o',	'--comment',			GetoptLong::REQUIRED_ARGUMENT],
+	['-b',	'--base-path',			GetoptLong::REQUIRED_ARGUMENT],
+	['-d',	'--directory',			GetoptLong::NO_ARGUMENT],
+	['-c',	'--check-file',			GetoptLong::NO_ARGUMENT],
+	['-a',	'--check-range',		GetoptLong::REQUIRED_ARGUMENT],
+	['-r',	'--retry',				GetoptLong::REQUIRED_ARGUMENT],
+	['-i',	'--cookie',				GetoptLong::REQUIRED_ARGUMENT],
+	['-p',	'--perfect',			GetoptLong::NO_ARGUMENT],
+	['-w',	'--working-directory',	GetoptLong::NO_ARGUMENT],
+	['-h',	'--help',				GetoptLong::NO_ARGUMENT]
 )
 
 OPT = {}
 opt.each{|n, a| OPT[n[1].to_sym] = a}
 if OPT[:h] then showhelp; exit 0 end
+
+Dir.chdir(File.dirname(__FILE__)) if OPT[:w]
+
 errorexit('引数が足りません') if ARGV.size < 3
 errorexit('--marginオプションがおかしいです') if OPT[:m] && !pmnumonly?(OPT[:m])
 errorexit('--start-marginオプションがおかしいです') if OPT[:s] && !pmnumonly?(OPT[:s])
