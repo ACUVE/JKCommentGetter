@@ -46,8 +46,9 @@ module JKComment
 		# 指定期間のコメントのChatElementsを取得する。時間によりソート済みである。
 		# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
 		# end_time: 取得範囲のおわり、Unix時またはTimeクラス
-		def getChatElementsRange(jknum, start_time, end_time)
-			et = getChatElementsThreadRange(jknum, start_time, end_time)
+		# perfect: 完全なコメントであると保証できない場合に失敗するか否か（普通はfalseで大丈夫）
+		def getChatElementsRange(jknum, start_time, end_time, perfect = false)
+			et = getChatElementsThreadRange(jknum, start_time, end_time, perfect)
 			
 			carr = []
 			et.each do |obj|
@@ -77,7 +78,8 @@ module JKComment
 		# 指定期間のコメントのChatElementsとFlv情報をスレッドごとに取得する。
 		# start_time: 取得範囲のはじめ、Unix時またはTimeクラス
 		# end_time: 取得範囲のおわり、Unix時またはTimeクラス
-		def getChatElementsThreadRange(jknum, start_time, end_time)
+		# perfect: 完全なコメントであると保証できない場合に失敗するか否か（普通はfalseで大丈夫）
+		def getChatElementsThreadRange(jknum, start_time, end_time, perfect = false)
 			raise RuntimeError, 'Already started.' if @state == WORKING
 			
 			@state = WORKING
@@ -96,7 +98,13 @@ module JKComment
 						
 						break if flv
 					end
-					raise RuntimeError, 'Could not get flv information.' if flv == nil
+					if flv == nil
+						if !perfect && crr_time < start_time.to_i
+							logging 'コメントの完全性は保証できませんが，問題がなさそうなので取得を終了します'
+							break 
+						end
+						raise RuntimeError, 'Could not get flv information.'
+					end
 					
 					break if start_time.to_i > flv['end_time'].to_i
 					

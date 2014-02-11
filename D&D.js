@@ -1,33 +1,33 @@
-// TSãƒ•ã‚¡ã‚¤ãƒ«ã‚’ä»–ã®ã‚¹ã‚¯ãƒªãƒ—ãƒˆã¨ã‹å®Ÿè¡Œãƒ•ã‚¡ã‚¤ãƒ«ã«ä¸¸æŠ•ã’ã—ã¦ãƒ‹ã‚³ãƒ‹ã‚³å‹•ç”»ã®ã‚³ãƒ¡ãƒ³ãƒˆã‚’è‡ªå‹•ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰å‡ºæ¥ã‚‹ã‹ã‚‚ã—ã‚Œãªã„ã‚ˆã†ã«ã™ã‚‹ã‚¹ã‚¯ãƒªãƒ—ãƒˆ
+// TSƒtƒ@ƒCƒ‹‚ð‘¼‚ÌƒXƒNƒŠƒvƒg‚Æ‚©ŽÀsƒtƒ@ƒCƒ‹‚ÉŠÛ“Š‚°‚µ‚ÄƒjƒRƒjƒR“®‰æ‚ÌƒRƒƒ“ƒg‚ðŽ©“®ƒ_ƒEƒ“ƒ[ƒho—ˆ‚é‚©‚à‚µ‚ê‚È‚¢‚æ‚¤‚É‚·‚éƒXƒNƒŠƒvƒg
 // License: WTFPL <http://www.wtfpl.net/txt/copying/>
 
-// â˜†ä½¿ã„æ–¹
-// ã€€0. JKCommentGetter.rbã¨åŒã˜ãƒ•ã‚©ãƒ«ãƒ€ã«ã“ã®ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ç½®ãã€JKCommentGetter.rbã®è¨­å®šã‚’æ¸ˆã¾ã›ã‚‹
-// ã€€1. tsrenamec ã‚’åŒã˜ãƒ•ã‚©ãƒ«ãƒ€ã«ç½®ãï¼ˆhttp://toro.2ch.net/test/read.cgi/avi/1330008877/626ï¼‰>>626æ° åŠã³ åŽŸä½œè€… ã«æ„Ÿè¬
-// ã€€2. ã“ã®ã‚¹ã‚¯ãƒªãƒ—ãƒˆã®ã‚¢ã‚¤ã‚³ãƒ³ã«ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ãƒ‰ãƒ©ãƒƒã‚°ã‚¢ãƒ³ãƒ‰ãƒ‰ãƒ­ãƒƒãƒ—ã™ã‚‹
-// ã€€3. ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰å‡ºæ¥ã‚‹ã‹ã‚‚ã—ã‚Œãªã„
-// â€»ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ãƒ¼ã«-bã‚’ã¤ã‘ãªã„ã¨ãã€ã‚¹ã‚¯ãƒªãƒ—ãƒˆã®ã‚ã‚‹ãƒ•ã‚©ãƒ«ãƒ€ã«å‡ºåŠ›ã•ã‚Œã¾ã™
-// â€»-fã‚’ã¤ã‘ãªã„ã¨ä½•æ•…ã‹ï¼ˆè‡ªåˆ†ã®ç’°å¢ƒã§ã¯ï¼‰æ­¢ã¾ã‚Šã¾ã™
+// ™Žg‚¢•û
+// @0. JKCommentGetter.rb‚Æ“¯‚¶ƒtƒHƒ‹ƒ_‚É‚±‚Ìƒtƒ@ƒCƒ‹‚ð’u‚«AJKCommentGetter.rb‚ÌÝ’è‚ðÏ‚Ü‚¹‚é
+// @1. tsrenamec ‚ð“¯‚¶ƒtƒHƒ‹ƒ_‚É’u‚­ihttp://toro.2ch.net/test/read.cgi/avi/1330008877/626j>>626Ž ‹y‚Ñ Œ´ìŽÒ ‚ÉŠ´ŽÓ
+// @2. ‚±‚ÌƒXƒNƒŠƒvƒg‚ÌƒAƒCƒRƒ“‚Éƒtƒ@ƒCƒ‹‚ðƒhƒ‰ƒbƒOƒAƒ“ƒhƒhƒƒbƒv‚·‚é
+// @3. ƒ_ƒEƒ“ƒ[ƒho—ˆ‚é‚©‚à‚µ‚ê‚È‚¢
+// ¦ƒpƒ‰ƒ[ƒ^[‚É-b‚ð‚Â‚¯‚È‚¢‚Æ‚«AƒXƒNƒŠƒvƒg‚Ì‚ ‚éƒtƒHƒ‹ƒ_‚Éo—Í‚³‚ê‚Ü‚·
+// ¦-f‚ð‚Â‚¯‚È‚¢‚Æ‰½ŒÌ‚©iŽ©•ª‚ÌŠÂ‹«‚Å‚ÍjŽ~‚Ü‚è‚Ü‚·
 
-// â˜†è¨­å®š
-// ã€€ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã™ã‚‹ãŸã‚ã‚¹ã‚¯ãƒªãƒ—ãƒˆã®ãƒ•ã‚¡ã‚¤ãƒ«å
+// ™Ý’è
+// @ƒ_ƒEƒ“ƒ[ƒh‚·‚é‚½‚ßƒXƒNƒŠƒvƒg‚Ìƒtƒ@ƒCƒ‹–¼
 var DOWNLOADSCRIPT = 'JKCommentGetter.rb';
-// ã€€TsRenamec ã®ãƒ•ã‚¡ã‚¤ãƒ«å
+// @TsRenamec ‚Ìƒtƒ@ƒCƒ‹–¼
 var TSRENAMEC = 'tsrenemec.exe';
-// ã€€ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã™ã‚‹ãŸã‚ã®ã‚¹ã‚¯ãƒªãƒ—ãƒˆã«æ¸¡ã™ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿
-var DOWNLOADSCRIPTARG = '-f -d';
-// ã€€ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ã®ã‚³ãƒ¡ãƒ³ãƒˆã«ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰å…ƒã®ãƒ•ã‚¡ã‚¤ãƒ«åã‚’æ›¸ãè¾¼ã‚€ã‹å¦ã‹
+// @ƒ_ƒEƒ“ƒ[ƒh‚·‚é‚½‚ß‚ÌƒXƒNƒŠƒvƒg‚É“n‚·ƒpƒ‰ƒ[ƒ^
+var DOWNLOADSCRIPTARG = '-f -d -w';
+// @ƒƒOƒtƒ@ƒCƒ‹‚ÌƒRƒƒ“ƒg‚Éƒ_ƒEƒ“ƒ[ƒhŒ³‚Ìƒtƒ@ƒCƒ‹–¼‚ð‘‚«ž‚Þ‚©”Û‚©
 var COMMENTFILENAME = true;
-// ã€€Rubyã‚’èµ·å‹•ã™ã‚‹ã‚³ãƒžãƒ³ãƒ‰
+// @Ruby‚ð‹N“®‚·‚éƒRƒ}ƒ“ƒh
 var RUBYCOMMAND = 'ruby';
-// ã€€tsrenameãŒå‡ºåŠ›ã™ã‚‹ãƒãƒ£ãƒ³ãƒãƒ«åã¨jk*ã¨ã®å¯¾å¿œè¡¨
+// @tsrename‚ªo—Í‚·‚éƒ`ƒƒƒ“ƒlƒ‹–¼‚Æjk*‚Æ‚Ì‘Î‰ž•\
 function ChToJk(ch){
 	return {
-		'ï¼®ï¼¨ï¼«ç·åˆãƒ»æ±äº¬': 'jk1',
-		'æ—¥æœ¬ãƒ†ãƒ¬ãƒ“': 'jk4',
-		'ãƒ†ãƒ¬ãƒ“æ±äº¬': 'jk7',
-		'ãƒ•ã‚¸ãƒ†ãƒ¬ãƒ“ã‚¸ãƒ§ãƒ³': 'jk8',
-		'ï¼´ï¼¯ï¼«ï¼¹ï¼¯ã€€ï¼­ï¼¸': 'jk9'
+		'‚m‚g‚j‘‡E“Œ‹ž': 'jk1',
+		'“ú–{ƒeƒŒƒr': 'jk4',
+		'ƒeƒŒƒr“Œ‹ž': 'jk7',
+		'ƒtƒWƒeƒŒƒrƒWƒ‡ƒ“': 'jk8',
+		'‚s‚n‚j‚x‚n@‚l‚w': 'jk9'
 	}[ch];
 }
 
@@ -35,7 +35,7 @@ function ChToJk(ch){
 var shell = WScript.CreateObject('WScript.Shell');
 if(!shell) WScript.Quit(-1);
 if(WScript.FullName.match(/wscript\.exe$/i)){
-	// WScriptã®ã¨ãã¯CScriptã§ã‚„ã‚ŠãªãŠã™
+	// WScript‚Ì‚Æ‚«‚ÍCScript‚Å‚â‚è‚È‚¨‚·
 	str = '';
 	for(var i = 0; i < WScript.Arguments.length; ++i){
 		str += ' "' + WScript.Arguments(i) + '"';
@@ -55,44 +55,50 @@ for(var i = 0; i < WScript.Arguments.length; ++i){
 	main(WScript.Arguments(i));
 }
 
-WScript.Echo('å®Œäº†ã—ã¾ã—ãŸ Enterã‚’æŠ¼ã—ã¦çµ‚äº†ã—ã¾ã™')
+WScript.Echo('Enter‚ð‰Ÿ‚µ‚ÄI—¹‚µ‚Ü‚·')
 WScript.StdIn.ReadLine()
 
 function main(path){
-	logging(path + ' ã‹ã‚‰èª­ã¿å–ã£ã¦ã‚³ãƒ¡ãƒ³ãƒˆã®ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã‚’è¡Œã„ã¾ã™');
-	var exe = shell.Exec(PATH + '\\' + TSRENAMEC + ' "' + path + '" "@YY@MM@DD@SH@SM@SS/@EH@EM@ES/@CH"');	// ãƒ‘ã‚¹ã« " ãŒã‚ã‚‹ã¨é§„ç›®ã‹ã‚‚ã€‚Linuxã¨ã‹ã€‚
-	while(exe.Status != 1) WScript.Sleep(100);
-	
-	if(exe.StdErr.ReadLine() == ''){	// Success!
-		logging('ã€€' + TSRENAMEC + ' ã«ã‚ˆã‚‹è§£æžæˆåŠŸ')
-		var out = exe.StdOut.ReadLine();
-		var m = out.match(/^(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)\/(\d\d)(\d\d)(\d\d)\/(.+)$/);
-		if(m){
-			var start_time = (new Date(m[1] - 0, m[2] - 1, m[3] - 0, m[4] - 0, m[5] - 0, m[6] - 0)).getTime() / 1000;
-			var end_time = (new Date(m[1] - 0, m[2] - 1, m[3] - 0, m[7] - 0, m[8] - 0, m[9] - 0)).getTime() / 1000;
-			if(start_time > end_time){ end_time += 24 * 60 * 60; }
-			var jknum = ChToJk(m[10]);
-			if(jknum){
-				logging('ã€€ã‚³ãƒ¡ãƒ³ãƒˆãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã‚’é–‹å§‹')
-				// -b ã‚’ä»˜ã‘ã¦ã„ã‚‹ãŒã€è¤‡æ•°æŒ‡å®šã•ã‚ŒãŸå ´åˆä¸€ç•ªæœ€å¾Œã®ã‚‚ã®ãŒåˆ©ç”¨ã•ã‚Œã‚‹ã®ã§DOWNLOADSCRIPTARGã®æŒ‡å®šã¯ç„¡é§„ã«ã¯ãªã‚‰ãªã„
-				var exe2 = shell.Exec(RUBYCOMMAND + ' "' + PATH + '\\' + DOWNLOADSCRIPT + '" ' + jknum + ' ' + start_time + ' ' + end_time + ' -b "' + PATH + '"' + (COMMENTFILENAME ? ' -o "' + path + '"' : '') + ' ' + DOWNLOADSCRIPTARG);
-				while(exe2.Status != 1){
-					// ç„¡æ„å‘³ã«èª­ã¿é£›ã°ã™
-					while(!exe2.StdErr.AtEndOfLine){exe2.StdErr.ReadLine();}
-					while(!exe2.StdOut.AtEndOfLine){exe2.StdOut.ReadLine();}
-					WScript.Sleep(100);
-				}
-				if(exe2.ExitCode != 0){
-					logging('ã€€ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ãŸã‹ã€ã‚³ãƒ¡ãƒ³ãƒˆãŒ1ã¤ã‚‚å¾—ã‚‰ã‚Œã¾ã›ã‚“ã§ã—ãŸ');
+	logging(path + ' ‚©‚ç“Ç‚ÝŽæ‚Á‚ÄƒRƒƒ“ƒg‚Ìƒ_ƒEƒ“ƒ[ƒh‚ðs‚¢‚Ü‚·');
+	try{
+		var exe = shell.Exec(PATH + '\\' + TSRENAMEC + ' "' + path + '" "@YY@MM@DD@SH@SM@SS/@EH@EM@ES/@CH"');	// ƒpƒX‚É " ‚ª‚ ‚é‚Æ‘Ê–Ú‚©‚àBLinux‚Æ‚©B
+	}catch(e){}
+	if(exe){
+		while(exe.Status != 1) WScript.Sleep(100);
+		
+		if(exe.StdErr.ReadLine() == ''){	// Success!
+			logging('@' + TSRENAMEC + ' ‚É‚æ‚é‰ðÍ¬Œ÷')
+			var out = exe.StdOut.ReadLine();
+			var m = out.match(/^(\d\d\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)\/(\d\d)(\d\d)(\d\d)\/(.+)$/);
+			if(m){
+				var start_time = (new Date(m[1] - 0, m[2] - 1, m[3] - 0, m[4] - 0, m[5] - 0, m[6] - 0)).getTime() / 1000;
+				var end_time = (new Date(m[1] - 0, m[2] - 1, m[3] - 0, m[7] - 0, m[8] - 0, m[9] - 0)).getTime() / 1000;
+				if(start_time > end_time){ end_time += 24 * 60 * 60; }
+				var jknum = ChToJk(m[10]);
+				if(jknum){
+					logging('@ƒRƒƒ“ƒgƒ_ƒEƒ“ƒ[ƒh‚ðŠJŽn')
+					// -b ‚ð•t‚¯‚Ä‚¢‚é‚ªA•¡”Žw’è‚³‚ê‚½ê‡ˆê”ÔÅŒã‚Ì‚à‚Ì‚ª—˜—p‚³‚ê‚é‚Ì‚ÅDOWNLOADSCRIPTARG‚ÌŽw’è‚Í–³‘Ê‚É‚Í‚È‚ç‚È‚¢
+					var exe2 = shell.Exec(RUBYCOMMAND + ' "' + PATH + '\\' + DOWNLOADSCRIPT + '" ' + jknum + ' ' + start_time + ' ' + end_time + ' -b "' + PATH + '"' + (COMMENTFILENAME ? ' -o "' + path + '"' : '') + ' ' + DOWNLOADSCRIPTARG);
+					while(exe2.Status != 1){
+						// –³ˆÓ–¡‚É“Ç‚Ý”ò‚Î‚·
+						while(!exe2.StdErr.AtEndOfLine){exe2.StdErr.ReadLine();}
+						while(!exe2.StdOut.AtEndOfLine){exe2.StdOut.ReadLine();}
+						WScript.Sleep(100);
+					}
+					if(exe2.ExitCode != 0){
+						logging('@ƒGƒ‰[‚ª”­¶‚µ‚½‚©AƒRƒƒ“ƒg‚ª1‚Â‚à“¾‚ç‚ê‚Ü‚¹‚ñ‚Å‚µ‚½');
+					}else{
+						logging('@ƒ_ƒEƒ“ƒ[ƒhŠ®—¹I')
+					}
 				}else{
-					logging('ã€€ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰å®Œäº†ï¼')
+					logging('@ƒ`ƒƒƒ“ƒlƒ‹ ' + m[10] + ' ‚É‘Î‰ž‚·‚éjk*‚ª“o˜^‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ');
 				}
-			}else{
-				logging('ã€€ãƒãƒ£ãƒ³ãƒãƒ« ' + m[10] + ' ã«å¯¾å¿œã™ã‚‹jk*ãŒç™»éŒ²ã•ã‚Œã¦ã„ã¾ã›ã‚“');
 			}
+		}else{
+			logging('@' + TSRENAMEC + ' ‚ªŽ¸”s‚µ‚Ü‚µ‚½');
 		}
 	}else{
-		logging('ã€€' + TSRENAMEC + ' ãŒå¤±æ•—ã—ã¾ã—ãŸ');
+		logging('@' + TSRENAMEC + ' ‚ª‹N“®‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½');
 	}
 }
 
