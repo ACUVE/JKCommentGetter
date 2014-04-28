@@ -12,6 +12,8 @@
 // ☆設定
 // 　ダウンロードするためスクリプトのファイル名
 var DOWNLOADSCRIPT = 'JKCommentGetter.rb';
+// 　AnalyzePATのファイル名
+var ANALYZEPAT = 'AnalyzePAT.rb';
 // 　TsRenamec のファイル名
 var TSRENAMEC = 'tsrenemec.exe';
 // 　ダウンロードするためのスクリプトに渡すパラメータ
@@ -21,10 +23,12 @@ var COMMENTFILENAME = true;
 // 　Rubyを起動するコマンド
 var RUBYCOMMAND = 'ruby';
 // 　tsrenameが出力するチャンネル名とjk*との対応表
+// 　　AnalyzePAT.rbで取得に失敗した場合のみしか呼ばれないため、設定しなくても大丈夫だと思われます
 function ChToJk(ch){
 	return {
 		'ＮＨＫ総合・東京': 'jk1',
 		'日本テレビ': 'jk4',
+		'ＴＢＳ': 'jk6',
 		'テレビ東京': 'jk7',
 		'フジテレビジョン': 'jk8',
 		'ＴＯＫＹＯ　ＭＸ': 'jk9'
@@ -55,11 +59,27 @@ for(var i = 0; i < WScript.Arguments.length; ++i){
 	main(WScript.Arguments(i));
 }
 
-WScript.Echo('Enterを押して終了します')
-WScript.StdIn.ReadLine()
+WScript.Echo('Enterを押して終了します');
+stop();
+
+function ChToJkMain(ch, path){
+	try{
+		var exe = shell.Exec(RUBYCOMMAND + ' "' + PATH + '\\' + ANALYZEPAT + '" "' + path + '"');
+	}catch(e){
+		logging(e.message);
+		stop();
+	}
+	
+	if(!exe || exe.ExitCode != 0){
+		return ChToJk(ch);
+	}
+	
+	return 'jk' + exe.StdOut.ReadLine();
+}
 
 function main(path){
-	logging(path + ' から読み取ってコメントのダウンロードを行います');
+	logging(path + ' のコメントをダウンロードします……');
+	
 	try{
 		var exe = shell.Exec(PATH + '\\' + TSRENAMEC + ' "' + path + '" "@YY@MM@DD@SH@SM@SS/@EH@EM@ES/@CH"');	// パスに " があると駄目かも。Linuxとか。
 	}catch(e){}
@@ -74,11 +94,12 @@ function main(path){
 				var start_time = (new Date(m[1] - 0, m[2] - 1, m[3] - 0, m[4] - 0, m[5] - 0, m[6] - 0)).getTime() / 1000;
 				var end_time = (new Date(m[1] - 0, m[2] - 1, m[3] - 0, m[7] - 0, m[8] - 0, m[9] - 0)).getTime() / 1000;
 				if(start_time > end_time){ end_time += 24 * 60 * 60; }
-				var jknum = ChToJk(m[10]);
+				var jknum = ChToJkMain(m[10], path);
 				if(jknum){
 					logging('　コメントダウンロードを開始')
 					// -b を付けているが、複数指定された場合一番最後のものが利用されるのでDOWNLOADSCRIPTARGの指定は無駄にはならない
 					var exe2 = shell.Exec(RUBYCOMMAND + ' "' + PATH + '\\' + DOWNLOADSCRIPT + '" ' + jknum + ' ' + start_time + ' ' + end_time + ' -b "' + PATH + '"' + (COMMENTFILENAME ? ' -o "' + path + '"' : '') + ' ' + DOWNLOADSCRIPTARG);
+					
 					while(exe2.Status != 1){
 						// 無意味に読み飛ばす
 						while(!exe2.StdErr.AtEndOfLine){exe2.StdErr.ReadLine();}
@@ -104,4 +125,7 @@ function main(path){
 
 function logging(str){
 	WScript.Echo('log: ' + str);
+}
+function stop(){
+	WScript.StdIn.ReadLine();
 }
